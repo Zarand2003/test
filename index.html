@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rajzolós felület</title>
+
 <style>
   body, html {
     margin: 0;
@@ -15,18 +16,25 @@
     height: 100%;
     overflow: hidden;
   }
+
+  #buttons {
+    margin: 10px 0;
+    z-index: 10;
+  }
+
+  button {
+    padding: 10px 18px;
+    font-size: 1.1em;
+    margin: 0 8px;
+    border-radius: 8px;
+    border: none;
+  }
+
   #instructions {
-    margin: 10px;
+    margin: 10px 0 5px 0;
     font-size: 1.2em;
   }
-  #buttons {
-    margin: 10px;
-  }
-  button {
-    margin: 0 5px;
-    padding: 8px 16px;
-    font-size: 1em;
-  }
+
   canvas {
     display: block;
     margin: 0 auto;
@@ -35,99 +43,180 @@
   }
 </style>
 </head>
+
 <body>
+
 <div id="buttons">
   <button id="resetBtn">Újra</button>
   <button id="doneBtn">Kész</button>
 </div>
+
 <div id="instructions">jelölje be kényelmes tartomány területét</div>
+
 <canvas id="drawingCanvas"></canvas>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = 'https://ahzhydrbmpybyosgvekb.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy';
-const BUCKET_NAME = 'egykzestartomany';
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script type="module">
 
-const FORM_URL = 'https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse';
-const EASY_ENTRY = 'entry.2090430824';
-const HARD_ENTRY = 'entry.1822346389';
+  /* ------------------------------
+     SUPABASE IMPORT (v2 ESM MODUL)
+     ------------------------------ */
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
-const canvas = document.getElementById('drawingCanvas');
-const ctx = canvas.getContext('2d');
+  const SUPABASE_URL = "https://ahzhydrbmpybyosgvekb.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy";
+  const BUCKET = "egykzestartomany";
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - 100; // hely a gomboknak és szövegnek
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let drawing = false;
-function startDraw(e){ drawing = true; draw(e); }
-function endDraw(e){ drawing = false; ctx.beginPath(); }
-function draw(e){
-  if(!drawing) return;
-  e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  let x, y;
-  if(e.touches){
-    x = e.touches[0].clientX - rect.left;
-    y = e.touches[0].clientY - rect.top;
-  } else {
-    x = e.clientX - rect.left;
-    y = e.clientY - rect.top;
+  /* ------------------------------
+     GOOGLE FORM BEÁLLÍTÁSOK
+     ------------------------------ */
+  const FORM_URL =
+    "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
+
+  const EASY_ENTRY = "entry.2090430824";
+  const HARD_ENTRY = "entry.1822346389";
+
+  /* ------------------------------
+     CANVAS MÉRETEZÉSE
+     ------------------------------ */
+  const canvas = document.getElementById("drawingCanvas");
+  const ctx = canvas.getContext("2d");
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height =
+      window.innerHeight -
+      document.getElementById("buttons").offsetHeight -
+      70;
   }
-  ctx.lineWidth = 20;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = 'white';
-  ctx.lineTo(x, y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-}
-canvas.addEventListener('mousedown', startDraw);
-canvas.addEventListener('mouseup', endDraw);
-canvas.addEventListener('mouseout', endDraw);
-canvas.addEventListener('mousemove', draw);
-canvas.addEventListener('touchstart', startDraw);
-canvas.addEventListener('touchend', endDraw);
-canvas.addEventListener('touchmove', draw);
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
 
-document.getElementById('resetBtn').addEventListener('click', ()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+  /* ------------------------------
+     RAJZOLÁS
+     ------------------------------ */
+  let drawing = false;
 
-let step = 1; // 1 = kényelmes, 2 = kibővített
-
-document.getElementById('doneBtn').addEventListener('click', async ()=>{
-  const dataUrl = canvas.toDataURL('image/png');
-  const filename = `drawing_${Date.now()}.png`;
-
-  const { data, error } = await supabase.storage.from(BUCKET_NAME).upload(filename, dataURLtoBlob(dataUrl));
-  if(error){ alert('Hiba a feltöltés során: '+error.message); return; }
-
-  const { publicUrl, error: urlError } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filename);
-  if(urlError){ alert('Hiba a public URL lekérésekor: '+urlError.message); return; }
-
-  if(step===1){
-    step=2;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    document.getElementById('instructions').textContent='jelölje be kibővített tartomány területét';
-    window.firstImageURL = publicUrl;
-  } else {
-    const secondImageURL = publicUrl;
-    const formUrl = FORM_URL + `?${EASY_ENTRY}=${encodeURIComponent(window.firstImageURL)}&${HARD_ENTRY}=${encodeURIComponent(secondImageURL)}`;
-    window.location.href = formUrl;
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top,
+      };
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    }
   }
-});
 
-function dataURLtoBlob(dataurl){
-  const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-  bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-  for(let i=0;i<n;i++) u8arr[i]=bstr.charCodeAt(i);
-  return new Blob([u8arr], {type:mime});
-}
+  function startDraw(e) {
+    drawing = true;
+    draw(e);
+  }
+
+  function endDraw() {
+    drawing = false;
+    ctx.beginPath();
+  }
+
+  function draw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+
+    ctx.lineWidth = 30;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "white";
+
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  canvas.addEventListener("mousedown", startDraw);
+  canvas.addEventListener("mouseup", endDraw);
+  canvas.addEventListener("mousemove", draw);
+
+  canvas.addEventListener("touchstart", startDraw);
+  canvas.addEventListener("touchend", endDraw);
+  canvas.addEventListener("touchmove", draw);
+
+  /* ------------------------------
+     ÚJRA GOMB
+     ------------------------------ */
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  /* ------------------------------
+     KÉT LÉPÉS (EASY → HARD)
+     ------------------------------ */
+  let step = 1;
+  let easyImageURL = null;
+
+  document.getElementById("doneBtn").addEventListener("click", async () => {
+    const dataURL = canvas.toDataURL("image/png");
+    const blob = dataURLtoBlob(dataURL);
+    const filename = `drawing_${Date.now()}.png`;
+
+    // Feltöltés Supabase-re
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(filename, blob);
+
+    if (error) {
+      alert("Hiba a feltöltés során: " + error.message);
+      return;
+    }
+
+    // Publikus URL lekérése
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+    const publicURL = data.publicUrl;
+
+    if (step === 1) {
+      easyImageURL = publicURL;
+      step = 2;
+
+      // Canvas törlése
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Instruction módosítása
+      document.getElementById("instructions").textContent =
+        "jelölje be kibővített tartomány területét";
+    } 
+    else {
+      const hardImageURL = publicURL;
+
+      // Visszairányítás a Google Formra
+      const redirect =
+        FORM_URL +
+        `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
+        `&${HARD_ENTRY}=${encodeURIComponent(hardImageURL)}`;
+
+      window.location.href = redirect;
+    }
+  });
+
+  /* ------------------------------
+     SEGÉDFÜGGVÉNY
+     ------------------------------ */
+  function dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(","),
+      mime = arr[0].match(/:(.*?);/)[1],
+      bstr = atob(arr[1]),
+      n = bstr.length,
+      u8arr = new Uint8Array(n);
+
+    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+
+    return new Blob([u8arr], { type: mime });
+  }
 </script>
+
 </body>
 </html>
-
