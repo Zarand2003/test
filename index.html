@@ -164,7 +164,7 @@
     const blob = dataURLtoBlob(dataURL);
     const filename = `drawing_${Date.now()}.png`;
 
-    // Feltöltés Supabase-re
+    // Feltöltés supabase-re
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(filename, blob);
@@ -220,3 +220,4 @@
 
 </body>
 </html>
+
