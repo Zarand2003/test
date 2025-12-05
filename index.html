@@ -16,10 +16,25 @@
     overflow: hidden;
   }
 
+  /* FULLSCREEN GOMB */
+  #fullscreenBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 30;
+    background: #fff;
+    color: #000;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1em;
+  }
+
   /* Lebegő gombok */
   #buttons {
     position: fixed;
     top: 10px;
+    left: 0;
     width: 100%;
     text-align: center;
     z-index: 20;
@@ -35,7 +50,7 @@
     color: #000;
   }
 
-  /* Instrukció szöveg lebeg */
+  /* Instrukció szöveg */
   #instructions {
     position: fixed;
     top: 60px;
@@ -57,6 +72,8 @@
 </head>
 
 <body>
+
+<button id="fullscreenBtn">Teljes képernyő</button>
 
 <div id="buttons">
   <button id="resetBtn">Újra</button>
@@ -90,7 +107,7 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS FELÉPÍTÉS
+   CANVAS BEÁLLÍTÁS
 ---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
@@ -112,16 +129,34 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 /* ---------------------------------------------
+   FULLSCREEN FUNKCIÓ
+---------------------------------------------- */
+document.getElementById("fullscreenBtn").addEventListener("click", () => {
+  const element = document.documentElement;
+
+  if (element.requestFullscreen) {
+    element.requestFullscreen();
+  } else if (element.webkitRequestFullscreen) {
+    element.webkitRequestFullscreen(); // Safari
+  } else if (element.msRequestFullscreen) {
+    element.msRequestFullscreen();
+  }
+
+  document.getElementById("fullscreenBtn").style.display = "none";
+
+  setTimeout(() => resizeCanvas(), 300);
+});
+
+/* ---------------------------------------------
    RAJZOLÁS
 ---------------------------------------------- */
 let drawing = false;
+let step = 1;
+let easyImageURL = null;
 
 function getPos(e) {
   if (e.touches) {
-    return {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY
-    };
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }
   return { x: e.clientX, y: e.clientY };
 }
@@ -144,7 +179,7 @@ function draw(e) {
 
   ctx.lineWidth = 30;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017"; // okkersárga
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
@@ -155,6 +190,7 @@ function draw(e) {
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
+
 canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
@@ -168,19 +204,14 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------
-   KÉT LÉPÉS (FEHÉR → OKKERSÁRGA)
+   KÉSZ GOMB
 ---------------------------------------------- */
-let step = 1;
-let easyImageURL = null;
-
 document.getElementById("doneBtn").addEventListener("click", async () => {
   const dataURL = canvas.toDataURL("image/jpeg", 0.9);
   const blob = dataURLtoBlob(dataURL);
   const filename = `drawing_${Date.now()}.jpg`;
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(filename, blob);
+  const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
 
   if (error) {
     alert("Hiba a feltöltés során: " + error.message);
@@ -200,19 +231,17 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
     document.getElementById("instructions").textContent =
       "jelölje be kibővített tartomány területét";
   } else {
-    const hardImageURL = publicURL;
-
     const redirect =
       FORM_URL +
       `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
-      `&${HARD_ENTRY}=${encodeURIComponent(hardImageURL)}`;
+      `&${HARD_ENTRY}=${encodeURIComponent(publicURL)}`;
 
     window.location.href = redirect;
   }
 });
 
 /* ---------------------------------------------
-   DATAURL → BLOB
+   DATAURL -> BLOB
 ---------------------------------------------- */
 function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(",");
