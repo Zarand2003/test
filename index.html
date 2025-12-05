@@ -2,16 +2,10 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rajzolós felület</title>
 
 <style>
-  :root {
-    --sat: env(safe-area-inset-top);      /* Safe Area Top */
-    --sab: env(safe-area-inset-bottom);   /* Safe Area Bottom */
-  }
-
   body, html {
     margin: 0;
     padding: 0;
@@ -22,9 +16,10 @@
     overflow: hidden;
   }
 
+  /* Gombok */
   #buttons {
     position: fixed;
-    top: calc(10px + var(--sat));
+    top: 10px;
     width: 100%;
     z-index: 30;
     display: flex;
@@ -49,18 +44,20 @@
     color: white;
   }
 
+  /* Instrukció */
   #instructions {
     position: fixed;
-    top: calc(65px + var(--sat));
+    top: 65px;
     width: 100%;
     text-align: center;
     font-size: 1.2em;
     z-index: 20;
   }
 
+  /* CANVAS A KIJELZŐ TETEJÉRE RAGASZTVA */
   canvas {
     position: absolute;
-    top: var(--sat);
+    top: 0;
     left: 0;
     background: #111;
     touch-action: none;
@@ -103,44 +100,34 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS MÉRET + SAFE AREA KORREKCIÓ
+   CANVAS – VALÓDI TELJES KIJELZŐ MÉRET
 ---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
-function getSafeArea() {
-  const root = getComputedStyle(document.documentElement);
-  return {
-    top: parseFloat(root.getPropertyValue("--sat")) || 0,
-    bottom: parseFloat(root.getPropertyValue("--sab")) || 0
-  };
-}
-
 function resizeCanvas() {
-  const safe = getSafeArea();
+  // Fizikai pixelméret
+  const pixelW = screen.width * window.devicePixelRatio;
+  const pixelH = screen.height * window.devicePixelRatio;
 
-  const visibleW = window.innerWidth;
-  const visibleH = window.innerHeight - safe.bottom;
+  canvas.width = pixelW;
+  canvas.height = pixelH;
 
-  canvas.width = visibleW * devicePixelRatio;
-  canvas.height = visibleH * devicePixelRatio;
-
-  canvas.style.width = visibleW + "px";
-  canvas.style.height = visibleH + "px";
-
-  canvas.style.top = safe.top + "px";
+  // CSS méret (vizuális méret)
+  canvas.style.width = screen.width + "px";
+  canvas.style.height = screen.height + "px";
 
   drawBorder();
 }
 
 function drawBorder() {
   ctx.strokeStyle = "white";
-  ctx.lineWidth = 2 * devicePixelRatio;
+  ctx.lineWidth = 2 * window.devicePixelRatio;
   ctx.strokeRect(
-    1 * devicePixelRatio,
-    1 * devicePixelRatio,
-    canvas.width - 2 * devicePixelRatio,
-    canvas.height - 2 * devicePixelRatio
+    1 * window.devicePixelRatio,
+    1 * window.devicePixelRatio,
+    canvas.width - 2 * window.devicePixelRatio,
+    canvas.height - 2 * window.devicePixelRatio
   );
 }
 
@@ -148,7 +135,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 /* ---------------------------------------------
-   RAJZOLÁS
+   RAJZOLÁS – KORREKT KOORDINÁTÁK
 ---------------------------------------------- */
 let drawing = false;
 let step = 1;
@@ -156,18 +143,17 @@ let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const offsetTop = rect.top;
 
   if (e.touches) {
     return {
-      x: e.touches[0].clientX * devicePixelRatio,
-      y: (e.touches[0].clientY - offsetTop) * devicePixelRatio
+      x: (e.touches[0].clientX - rect.left) * window.devicePixelRatio,
+      y: (e.touches[0].clientY - rect.top) * window.devicePixelRatio
     };
   }
 
   return {
-    x: e.clientX * devicePixelRatio,
-    y: (e.clientY - offsetTop) * devicePixelRatio
+    x: (e.clientX - rect.left) * window.devicePixelRatio,
+    y: (e.clientY - rect.top) * window.devicePixelRatio
   };
 }
 
@@ -187,9 +173,9 @@ function draw(e) {
 
   const pos = getPos(e);
 
-  ctx.lineWidth = 30 * devicePixelRatio;
+  ctx.lineWidth = 30 * window.devicePixelRatio;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017"; /* okker */
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
@@ -200,7 +186,6 @@ function draw(e) {
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
-
 canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
