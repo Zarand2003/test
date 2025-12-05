@@ -16,44 +16,43 @@
     overflow: hidden;
   }
 
-  /* FULLSCREEN GOMB */
-  #fullscreenBtn {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 30;
-    background: #fff;
-    color: #000;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: none;
-    font-size: 1em;
-  }
-
-  /* Lebegő gombok */
+  /* Fő gombsor */
   #buttons {
     position: fixed;
     top: 10px;
-    left: 0;
     width: 100%;
     text-align: center;
-    z-index: 20;
+    z-index: 30;
   }
 
+  /* Gombok */
   button {
     padding: 10px 18px;
     font-size: 1.1em;
-    margin: 0 8px;
+    margin: 0 6px;
     border-radius: 8px;
     border: none;
-    background: #fff;
+    color: #000;
+  }
+
+  #resetBtn {
+    background: #FFD700; /* sárga */
+  }
+
+  #doneBtn {
+    background: #2ECC71; /* zöld */
+    color: white;
+  }
+
+  #fullscreenBtn {
+    background: #fff; 
     color: #000;
   }
 
   /* Instrukció szöveg */
   #instructions {
     position: fixed;
-    top: 60px;
+    top: 65px;
     width: 100%;
     text-align: center;
     font-size: 1.2em;
@@ -73,10 +72,9 @@
 
 <body>
 
-<button id="fullscreenBtn">Teljes képernyő</button>
-
 <div id="buttons">
   <button id="resetBtn">Újra</button>
+  <button id="fullscreenBtn">Teljes képernyő</button>
   <button id="doneBtn">Kész</button>
 </div>
 
@@ -87,7 +85,7 @@
 <script type="module">
 
 /* ---------------------------------------------
-   SUPABASE IMPORT (v2 ESM MODUL)
+   SUPABASE IMPORT
 ---------------------------------------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
@@ -98,7 +96,7 @@ const BUCKET = "egykezestartomany";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ---------------------------------------------
-   GOOGLE FORM URL
+   GOOGLE FORM
 ---------------------------------------------- */
 const FORM_URL =
   "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
@@ -107,7 +105,7 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS BEÁLLÍTÁS
+   CANVAS
 ---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
@@ -115,7 +113,6 @@ const ctx = canvas.getContext("2d");
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-
   drawBorder();
 }
 
@@ -129,22 +126,52 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 /* ---------------------------------------------
-   FULLSCREEN FUNKCIÓ
+   FULLSCREEN TOGGLE
 ---------------------------------------------- */
-document.getElementById("fullscreenBtn").addEventListener("click", () => {
-  const element = document.documentElement;
+const fullscreenBtn = document.getElementById("fullscreenBtn");
 
-  if (element.requestFullscreen) {
-    element.requestFullscreen();
-  } else if (element.webkitRequestFullscreen) {
-    element.webkitRequestFullscreen(); // Safari
-  } else if (element.msRequestFullscreen) {
-    element.msRequestFullscreen();
+function isFullscreen() {
+  return (
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.msFullscreenElement
+  );
+}
+
+function enterFullscreen() {
+  const el = document.documentElement;
+
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  else if (el.msRequestFullscreen) el.msRequestFullscreen();
+}
+
+function exitFullscreen() {
+  if (document.exitFullscreen) document.exitFullscreen();
+  else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  else if (document.msExitFullscreen) document.msExitFullscreen();
+}
+
+fullscreenBtn.addEventListener("click", () => {
+  if (!isFullscreen()) {
+    enterFullscreen();
+  } else {
+    exitFullscreen();
   }
+});
 
-  document.getElementById("fullscreenBtn").style.display = "none";
-
-  setTimeout(() => resizeCanvas(), 300);
+/* Fullscreen változás figyelése */
+document.addEventListener("fullscreenchange", () => {
+  fullscreenBtn.textContent = isFullscreen()
+    ? "Kilépés teljes képernyőből"
+    : "Teljes képernyő";
+  resizeCanvas();
+});
+document.addEventListener("webkitfullscreenchange", () => {
+  fullscreenBtn.textContent = isFullscreen()
+    ? "Kilépés teljes képernyőből"
+    : "Teljes képernyő";
+  resizeCanvas();
 });
 
 /* ---------------------------------------------
@@ -155,9 +182,7 @@ let step = 1;
 let easyImageURL = null;
 
 function getPos(e) {
-  if (e.touches) {
-    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }
+  if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
   return { x: e.clientX, y: e.clientY };
 }
 
@@ -179,7 +204,7 @@ function draw(e) {
 
   ctx.lineWidth = 30;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
+  ctx.strokeStyle = step === 1 ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
@@ -196,7 +221,7 @@ canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
 
 /* ---------------------------------------------
-   ÚJRA GOMB
+   ÚJRA
 ---------------------------------------------- */
 document.getElementById("resetBtn").addEventListener("click", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -204,7 +229,7 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------
-   KÉSZ GOMB
+   KÉSZ
 ---------------------------------------------- */
 document.getElementById("doneBtn").addEventListener("click", async () => {
   const dataURL = canvas.toDataURL("image/jpeg", 0.9);
@@ -250,9 +275,7 @@ function dataURLtoBlob(dataurl) {
   const len = bstr.length;
   const u8 = new Uint8Array(len);
 
-  for (let i = 0; i < len; i++) {
-    u8[i] = bstr.charCodeAt(i);
-  }
+  for (let i = 0; i < len; i++) u8[i] = bstr.charCodeAt(i);
 
   return new Blob([u8], { type: mime });
 }
