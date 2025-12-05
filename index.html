@@ -125,7 +125,7 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 /* ---------------------------------------------
-   FULLSCREEN TOGGLE
+   FULLSCREEN TOGGLE (iOS kompatibilis!)
 ---------------------------------------------- */
 const fullscreenBtn = document.getElementById("fullscreenBtn");
 
@@ -138,7 +138,7 @@ function isFullscreen() {
 }
 
 function enterFullscreen() {
-  const el = document.documentElement;
+  const el = canvas;   // <-- CSAK EZ működik iPhone-on!
 
   if (el.requestFullscreen) el.requestFullscreen();
   else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -159,11 +159,12 @@ fullscreenBtn.addEventListener("click", () => {
   }
 });
 
-/* Fullscreen állapot változás figyelése */
+/* Fullscreen állapot követése */
 function updateFullscreenUI() {
   fullscreenBtn.textContent = isFullscreen()
     ? "Kilépés teljes képernyőből"
     : "Teljes képernyő";
+
   resizeCanvas();
 }
 
@@ -281,3 +282,4 @@ function dataURLtoBlob(dataurl) {
 </script>
 </body>
 </html>
+
