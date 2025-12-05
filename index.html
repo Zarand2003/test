@@ -16,23 +16,27 @@
     overflow: hidden;
   }
 
-  /* Fő gombsor */
+  /* Gombok egy sorban, középre igazítva */
   #buttons {
     position: fixed;
     top: 10px;
     width: 100%;
-    text-align: center;
     z-index: 30;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
   }
 
-  /* Gombok */
   button {
     padding: 10px 18px;
     font-size: 1.1em;
-    margin: 0 6px;
     border-radius: 8px;
     border: none;
     color: #000;
+  }
+
+  #fullscreenBtn {
+    background: #ffffff;
   }
 
   #resetBtn {
@@ -44,12 +48,6 @@
     color: white;
   }
 
-  #fullscreenBtn {
-    background: #fff; 
-    color: #000;
-  }
-
-  /* Instrukció szöveg */
   #instructions {
     position: fixed;
     top: 65px;
@@ -72,9 +70,10 @@
 
 <body>
 
+<!-- Gombok sorrendje: TELJES KÉPERNYŐ – ÚJRA – KÉSZ -->
 <div id="buttons">
-  <button id="resetBtn">Újra</button>
   <button id="fullscreenBtn">Teljes képernyő</button>
+  <button id="resetBtn">Újra</button>
   <button id="doneBtn">Kész</button>
 </div>
 
@@ -85,7 +84,7 @@
 <script type="module">
 
 /* ---------------------------------------------
-   SUPABASE IMPORT
+   SUPABASE
 ---------------------------------------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
@@ -160,19 +159,16 @@ fullscreenBtn.addEventListener("click", () => {
   }
 });
 
-/* Fullscreen változás figyelése */
-document.addEventListener("fullscreenchange", () => {
+/* Fullscreen állapot változás figyelése */
+function updateFullscreenUI() {
   fullscreenBtn.textContent = isFullscreen()
     ? "Kilépés teljes képernyőből"
     : "Teljes képernyő";
   resizeCanvas();
-});
-document.addEventListener("webkitfullscreenchange", () => {
-  fullscreenBtn.textContent = isFullscreen()
-    ? "Kilépés teljes képernyőből"
-    : "Teljes képernyő";
-  resizeCanvas();
-});
+}
+
+document.addEventListener("fullscreenchange", updateFullscreenUI);
+document.addEventListener("webkitfullscreenchange", updateFullscreenUI);
 
 /* ---------------------------------------------
    RAJZOLÁS
@@ -182,7 +178,8 @@ let step = 1;
 let easyImageURL = null;
 
 function getPos(e) {
-  if (e.touches) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.touches)
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
   return { x: e.clientX, y: e.clientY };
 }
 
@@ -204,7 +201,8 @@ function draw(e) {
 
   ctx.lineWidth = 30;
   ctx.lineCap = "round";
-  ctx.strokeStyle = step === 1 ? "white" : "#D4A017";
+
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
