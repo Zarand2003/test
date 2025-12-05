@@ -6,7 +6,7 @@
 <title>Rajzolós felület</title>
 
 <style>
-  body, html {
+  html, body {
     margin: 0;
     padding: 0;
     background: #111;
@@ -16,7 +16,7 @@
     overflow: hidden;
   }
 
-  /* --- Felső gombsor --- */
+  /* Felső gombok */
   #buttons {
     position: fixed;
     top: 10px;
@@ -44,7 +44,7 @@
     color: white;
   }
 
-  /* --- Instrukció szöveg --- */
+  /* Instrukció szöveg */
   #instructions {
     position: fixed;
     top: 65px;
@@ -54,11 +54,13 @@
     z-index: 20;
   }
 
-  /* --- Rajzolóvászon --- */
+  /* Vászon: kitölti a látható teret */
   canvas {
     position: absolute;
     top: 0;
     left: 0;
+    width: 100vw;   /* teljes szélesség */
+    height: 100vh;  /* teljes látható magasság */
     background: #111;
     touch-action: none;
     z-index: 1;
@@ -78,10 +80,9 @@
 <canvas id="drawingCanvas"></canvas>
 
 <script type="module">
-
-/* ============================
+/* ---------------------------------------------
    SUPABASE
-============================ */
+---------------------------------------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
 const SUPABASE_URL = "https://ahzhydrbmpybyosgvekb.supabase.co";
@@ -90,30 +91,29 @@ const BUCKET = "egykezestartomany";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* ============================
+/* ---------------------------------------------
    GOOGLE FORM
-============================ */
+---------------------------------------------- */
 const FORM_URL =
   "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
 
 const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
-/* ============================
-   CANVAS MÉRETEZÉS
-============================ */
+/* ---------------------------------------------
+   CANVAS MÉRETEZÉS (valódi látható viewport)
+---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  // A VIZUÁLIS vászon → teljes kijelző
-  const cssW = screen.width;
-  const cssH = screen.height;
+  // A canvas CSS-mérete már 100vw x 100vh.
+  // Ezeket olvassuk ki és skálázzuk devicePixelRatio-val.
+  const rect = canvas.getBoundingClientRect();
+  const cssW = rect.width;
+  const cssH = rect.height;
 
-  canvas.style.width = cssW + "px";
-  canvas.style.height = cssH + "px";
-
-  canvas.width = cssW * devicePixelRatio;
+  canvas.width  = cssW * devicePixelRatio;
   canvas.height = cssH * devicePixelRatio;
 
   drawBorder();
@@ -122,11 +122,10 @@ function resizeCanvas() {
 function drawBorder() {
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2 * devicePixelRatio;
-
   ctx.strokeRect(
     1 * devicePixelRatio,
     1 * devicePixelRatio,
-    canvas.width - 2 * devicePixelRatio,
+    canvas.width  - 2 * devicePixelRatio,
     canvas.height - 2 * devicePixelRatio
   );
 }
@@ -134,9 +133,9 @@ function drawBorder() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-/* ============================
+/* ---------------------------------------------
    RAJZOLÁS
-============================ */
+---------------------------------------------- */
 let drawing = false;
 let step = 1;
 let easyImageURL = null;
@@ -147,13 +146,13 @@ function getPos(e) {
   if (e.touches) {
     return {
       x: (e.touches[0].clientX - rect.left) * devicePixelRatio,
-      y: (e.touches[0].clientY - rect.top) * devicePixelRatio
+      y: (e.touches[0].clientY - rect.top)  * devicePixelRatio
     };
   }
 
   return {
     x: (e.clientX - rect.left) * devicePixelRatio,
-    y: (e.clientY - rect.top) * devicePixelRatio
+    y: (e.clientY - rect.top)  * devicePixelRatio
   };
 }
 
@@ -174,8 +173,8 @@ function draw(e) {
   const pos = getPos(e);
 
   ctx.lineWidth = 30 * devicePixelRatio;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1 ? "white" : "#D4A017");
+  ctx.lineCap   = "round";
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
@@ -191,59 +190,21 @@ canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
 
-/* ============================
+/* ---------------------------------------------
    ÚJRA
-============================ */
+---------------------------------------------- */
 document.getElementById("resetBtn").addEventListener("click", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBorder();
 });
 
-/* ============================
-   TELJES KIJELZŐS EXPORT
-============================ */
-
-async function exportFullScreen() {
-  return new Promise((resolve) => {
-
-    // Látható vászon
-    const smallCanvas = canvas;
-
-    // Teljes kijelző méret
-    const fullW = screen.width * devicePixelRatio;
-    const fullH = screen.height * devicePixelRatio;
-
-    const fullCanvas = document.createElement("canvas");
-    const fullCtx = fullCanvas.getContext("2d");
-
-    fullCanvas.width = fullW;
-    fullCanvas.height = fullH;
-
-    // Felső terület kitöltése (#111)
-    fullCtx.fillStyle = "#111";
-    fullCtx.fillRect(0, 0, fullW, fullH);
-
-    // A vászon tartalmát az ALJÁRA helyezzük
-    fullCtx.drawImage(
-      smallCanvas,
-      0,
-      fullH - smallCanvas.height,  // <-- A LÉNYEG
-      smallCanvas.width,
-      smallCanvas.height
-    );
-
-    // Kimenet
-    const finalData = fullCanvas.toDataURL("image/jpeg", 0.9);
-    resolve(dataURLtoBlob(finalData));
-  });
-}
-
-/* ============================
-   KÉSZ GOMB
-============================ */
+/* ---------------------------------------------
+   KÉSZ – a TÉNYLEGES RAJZFELÜLETET mentjük
+---------------------------------------------- */
 document.getElementById("doneBtn").addEventListener("click", async () => {
-
-  const blob = await exportFullScreen();
+  // Kimentjük a TÉNYLEGES rajzterületet (viewport)
+  const dataURL = canvas.toDataURL("image/jpeg", 0.9);
+  const blob = dataURLtoBlob(dataURL);
   const filename = `drawing_${Date.now()}.jpg`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
@@ -262,10 +223,8 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBorder();
-
     document.getElementById("instructions").textContent =
       "jelölje be kibővített tartomány területét";
-
   } else {
     const redirect =
       FORM_URL +
@@ -276,15 +235,15 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
   }
 });
 
-/* ============================
+/* ---------------------------------------------
    DATAURL → BLOB
-============================ */
+---------------------------------------------- */
 function dataURLtoBlob(dataurl) {
-  const arr = dataurl.split(",");
+  const arr  = dataurl.split(",");
   const mime = arr[0].match(/:(.*?);/)[1];
   const bstr = atob(arr[1]);
-  const len = bstr.length;
-  const u8 = new Uint8Array(len);
+  const len  = bstr.length;
+  const u8   = new Uint8Array(len);
 
   for (let i = 0; i < len; i++) {
     u8[i] = bstr.charCodeAt(i);
@@ -294,6 +253,5 @@ function dataURLtoBlob(dataurl) {
 }
 
 </script>
-
 </body>
 </html>
