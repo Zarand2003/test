@@ -54,7 +54,7 @@
     z-index: 20;
   }
 
-  /* CANVAS A KIJELZŐ TETEJÉN */
+  /* CANVAS – csak a látható terület */
   canvas {
     position: absolute;
     top: 0;
@@ -100,22 +100,20 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS – VALÓDI TELJES KIJELZŐ MÉRET
+   CANVAS – LÁTHATÓ TERÜLET (NEM SCREEN!!!)
 ---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  // Fizikai pixelméret
-  const pixelW = screen.width * devicePixelRatio;
-  const pixelH = screen.height * devicePixelRatio;
+  const cssW = window.innerWidth;
+  const cssH = window.innerHeight;
 
-  canvas.width = pixelW;
-  canvas.height = pixelH;
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
 
-  // CSS méret
-  canvas.style.width = screen.width + "px";
-  canvas.style.height = screen.height + "px";
+  canvas.width = cssW * devicePixelRatio;
+  canvas.height = cssH * devicePixelRatio;
 
   drawBorder();
 }
@@ -135,7 +133,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 /* ---------------------------------------------
-   RAJZOLÁS – OFFSET KOMPENZÁCIÓ!!!
+   RAJZOLÁS
 ---------------------------------------------- */
 let drawing = false;
 let step = 1;
@@ -143,18 +141,17 @@ let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const offsetTop = rect.top;  // <-- A böngésző UI eltolás mértéke
 
   if (e.touches) {
     return {
       x: (e.touches[0].clientX - rect.left) * devicePixelRatio,
-      y: (e.touches[0].clientY - offsetTop) * devicePixelRatio
+      y: (e.touches[0].clientY - rect.top) * devicePixelRatio
     };
   }
 
   return {
     x: (e.clientX - rect.left) * devicePixelRatio,
-    y: (e.clientY - offsetTop) * devicePixelRatio
+    y: (e.clientY - rect.top) * devicePixelRatio
   };
 }
 
@@ -200,11 +197,58 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 /* ---------------------------------------------
-   KÉSZ
+   KÉP EXPORT – TELJES KIJELZŐ MÉRETRE!!!
+---------------------------------------------- */
+async function exportFullScreenImage() {
+  return new Promise((resolve) => {
+
+    const smallCanvas = canvas;
+
+    // KÉP LÁTHATÓ TERÜLETRŐL
+    const smallData = smallCanvas.toDataURL("image/jpeg", 0.9);
+
+    // ÚJ NAGY CANVAS → TELJES KIJELZŐ
+    const bigCanvas = document.createElement("canvas");
+    const bigCtx = bigCanvas.getContext("2d");
+
+    const bigW = screen.width * devicePixelRatio;
+    const bigH = screen.height * devicePixelRatio;
+
+    bigCanvas.width = bigW;
+    bigCanvas.height = bigH;
+
+    // mennyivel tolta le a böngésző a canvas-t?
+    const rect = canvas.getBoundingClientRect();
+    const offsetPx = rect.top * devicePixelRatio;
+
+    const img = new Image();
+    img.src = smallData;
+
+    img.onload = () => {
+      bigCtx.fillStyle = "#111";
+      bigCtx.fillRect(0, 0, bigW, bigH);
+
+      // kis rajz feljebb tolva → pont a teljes kijelző tetejére
+      bigCtx.drawImage(
+        smallCanvas,
+        0,
+        offsetPx,
+        smallCanvas.width,
+        smallCanvas.height
+      );
+
+      const finalData = bigCanvas.toDataURL("image/jpeg", 0.9);
+      resolve(dataURLtoBlob(finalData));
+    };
+  });
+}
+
+/* ---------------------------------------------
+   KÉSZ BUTTON
 ---------------------------------------------- */
 document.getElementById("doneBtn").addEventListener("click", async () => {
-  const dataURL = canvas.toDataURL("image/jpeg", 0.9);
-  const blob = dataURLtoBlob(dataURL);
+
+  const blob = await exportFullScreenImage();
   const filename = `drawing_${Date.now()}.jpg`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
@@ -223,7 +267,6 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBorder();
-
     document.getElementById("instructions").textContent =
       "jelölje be kibővített tartomány területét";
   } else {
