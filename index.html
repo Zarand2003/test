@@ -2,10 +2,16 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Rajzolós felület</title>
 
 <style>
+  :root {
+    --sat: env(safe-area-inset-top);      /* Safe Area Top */
+    --sab: env(safe-area-inset-bottom);   /* Safe Area Bottom */
+  }
+
   body, html {
     margin: 0;
     padding: 0;
@@ -16,10 +22,9 @@
     overflow: hidden;
   }
 
-  /* Gombok */
   #buttons {
     position: fixed;
-    top: 10px;
+    top: calc(10px + var(--sat));
     width: 100%;
     z-index: 30;
     display: flex;
@@ -48,10 +53,9 @@
     color: white;
   }
 
-  /* Instrukció */
   #instructions {
     position: fixed;
-    top: 65px;
+    top: calc(65px + var(--sat));
     width: 100%;
     text-align: center;
     font-size: 1.2em;
@@ -60,7 +64,7 @@
 
   canvas {
     position: absolute;
-    top: 0;
+    top: var(--sat);
     left: 0;
     background: #111;
     touch-action: none;
@@ -104,24 +108,35 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS = teljes vizuális mobilképernyő
+   CANVAS MÉRET + SAFE AREA KORREKCIÓ
 ---------------------------------------------- */
-
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
-function resizeCanvas() {
-  // Vizualisan elérhető terület (a helyes mérőszám)
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+function getSafeArea() {
+  const root = getComputedStyle(document.documentElement);
+  return {
+    top: parseFloat(root.getPropertyValue("--sat")) || 0,
+    bottom: parseFloat(root.getPropertyValue("--sab")) || 0
+  };
+}
 
-  // Fizikai pixelméret a pontos rajzoláshoz
-  canvas.width = w * devicePixelRatio;
-  canvas.height = h * devicePixelRatio;
+function resizeCanvas() {
+  const safe = getSafeArea();
+
+  const visibleW = window.innerWidth;
+  const visibleH = window.innerHeight - safe.bottom;
+
+  // Fizikai pixel méret
+  canvas.width = visibleW * devicePixelRatio;
+  canvas.height = visibleH * devicePixelRatio;
 
   // CSS méret
-  canvas.style.width = w + "px";
-  canvas.style.height = h + "px";
+  canvas.style.width = visibleW + "px";
+  canvas.style.height = visibleH + "px";
+
+  // Canvas teteje = safe-area-top
+  canvas.style.top = safe.top + "px";
 
   drawBorder();
 }
@@ -151,12 +166,12 @@ function getPos(e) {
   if (e.touches) {
     return {
       x: e.touches[0].clientX * devicePixelRatio,
-      y: e.touches[0].clientY * devicePixelRatio
+      y: (e.touches[0].clientY - canvas.offsetTop) * devicePixelRatio
     };
   }
   return {
     x: e.clientX * devicePixelRatio,
-    y: e.clientY * devicePixelRatio
+    y: (e.clientY - canvas.offsetTop) * devicePixelRatio
   };
 }
 
@@ -178,7 +193,7 @@ function draw(e) {
 
   ctx.lineWidth = 30 * devicePixelRatio;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017"; // okker a második körben
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
@@ -195,10 +210,10 @@ canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
 
 /* ---------------------------------------------
-   TELJES KÉPERNYŐ GOMB (tájékoztató)
+   TELJES KÉPERNYŐ GOMB (információs)
 ---------------------------------------------- */
 document.getElementById("fullscreenBtn").addEventListener("click", () => {
-  alert("A rajzfelület teljesen kitölti a látható kijelzőt.\nA böngésző UI elemei nem befolyásolják a kimentett képet.");
+  alert("A rajzfelület illeszkedik a telefon látható területéhez.\nA böngésző sávjai nem kerülnek bele a mentett képbe.");
 });
 
 /* ---------------------------------------------
@@ -266,4 +281,3 @@ function dataURLtoBlob(dataurl) {
 </script>
 </body>
 </html>
-
