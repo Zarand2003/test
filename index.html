@@ -40,16 +40,12 @@
     color: #000;
   }
 
-  #fullscreenBtn {
-    background: #FFFFFF;
-  }
-
   #resetBtn {
-    background: #FFD700;
+    background: #FFD700; /* sárga */
   }
 
   #doneBtn {
-    background: #2ECC71;
+    background: #2ECC71; /* zöld */
     color: white;
   }
 
@@ -76,7 +72,6 @@
 <body>
 
 <div id="buttons">
-  <button id="fullscreenBtn">Teljes képernyő</button>
   <button id="resetBtn">Újra</button>
   <button id="doneBtn">Kész</button>
 </div>
@@ -127,15 +122,12 @@ function resizeCanvas() {
   const visibleW = window.innerWidth;
   const visibleH = window.innerHeight - safe.bottom;
 
-  // Fizikai pixel méret
   canvas.width = visibleW * devicePixelRatio;
   canvas.height = visibleH * devicePixelRatio;
 
-  // CSS méret
   canvas.style.width = visibleW + "px";
   canvas.style.height = visibleH + "px";
 
-  // Canvas teteje = safe-area-top
   canvas.style.top = safe.top + "px";
 
   drawBorder();
@@ -163,15 +155,19 @@ let step = 1;
 let easyImageURL = null;
 
 function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const offsetTop = rect.top;
+
   if (e.touches) {
     return {
       x: e.touches[0].clientX * devicePixelRatio,
-      y: (e.touches[0].clientY - canvas.offsetTop) * devicePixelRatio
+      y: (e.touches[0].clientY - offsetTop) * devicePixelRatio
     };
   }
+
   return {
     x: e.clientX * devicePixelRatio,
-    y: (e.clientY - canvas.offsetTop) * devicePixelRatio
+    y: (e.clientY - offsetTop) * devicePixelRatio
   };
 }
 
@@ -208,13 +204,6 @@ canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
-
-/* ---------------------------------------------
-   TELJES KÉPERNYŐ GOMB (információs)
----------------------------------------------- */
-document.getElementById("fullscreenBtn").addEventListener("click", () => {
-  alert("A rajzfelület illeszkedik a telefon látható területéhez.\nA böngésző sávjai nem kerülnek bele a mentett képbe.");
-});
 
 /* ---------------------------------------------
    ÚJRA
