@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-width=1.0">
 <title>Rajzolós felület</title>
 
 <style>
@@ -36,15 +36,15 @@
   }
 
   #fullscreenBtn {
-    background: #FFFFFF;  /* fehér */
+    background: #FFFFFF;
   }
 
   #resetBtn {
-    background: #FFD700;  /* sárga */
+    background: #FFD700;
   }
 
   #doneBtn {
-    background: #2ECC71;  /* zöld */
+    background: #2ECC71;
     color: white;
   }
 
@@ -104,34 +104,36 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS – VALÓDI TELJES KIJELZŐ MÉRET
+   CANVAS = teljes vizuális mobilképernyő
 ---------------------------------------------- */
+
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  // Fizikai pixelméret
-  const pixelW = screen.width * window.devicePixelRatio;
-  const pixelH = screen.height * window.devicePixelRatio;
+  // Vizualisan elérhető terület (a helyes mérőszám)
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
-  canvas.width = pixelW;
-  canvas.height = pixelH;
+  // Fizikai pixelméret a pontos rajzoláshoz
+  canvas.width = w * devicePixelRatio;
+  canvas.height = h * devicePixelRatio;
 
-  // CSS méret (vizuális méret)
-  canvas.style.width = screen.width + "px";
-  canvas.style.height = screen.height + "px";
+  // CSS méret
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
 
   drawBorder();
 }
 
 function drawBorder() {
   ctx.strokeStyle = "white";
-  ctx.lineWidth = 2 * window.devicePixelRatio;
+  ctx.lineWidth = 2 * devicePixelRatio;
   ctx.strokeRect(
-    1 * window.devicePixelRatio, 
-    1 * window.devicePixelRatio, 
-    canvas.width - 2 * window.devicePixelRatio, 
-    canvas.height - 2 * window.devicePixelRatio
+    1 * devicePixelRatio,
+    1 * devicePixelRatio,
+    canvas.width - 2 * devicePixelRatio,
+    canvas.height - 2 * devicePixelRatio
   );
 }
 
@@ -148,13 +150,13 @@ let easyImageURL = null;
 function getPos(e) {
   if (e.touches) {
     return {
-      x: e.touches[0].clientX * window.devicePixelRatio,
-      y: e.touches[0].clientY * window.devicePixelRatio
+      x: e.touches[0].clientX * devicePixelRatio,
+      y: e.touches[0].clientY * devicePixelRatio
     };
   }
   return {
-    x: e.clientX * window.devicePixelRatio,
-    y: e.clientY * window.devicePixelRatio
+    x: e.clientX * devicePixelRatio,
+    y: e.clientY * devicePixelRatio
   };
 }
 
@@ -174,9 +176,9 @@ function draw(e) {
 
   const pos = getPos(e);
 
-  ctx.lineWidth = 30 * window.devicePixelRatio;
+  ctx.lineWidth = 30 * devicePixelRatio;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017"; // okker a második körben
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
@@ -187,15 +189,16 @@ function draw(e) {
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
+
 canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
 
 /* ---------------------------------------------
-   TELJES KÉPERNYŐ GOMB (nem API, csak UX!)
+   TELJES KÉPERNYŐ GOMB (tájékoztató)
 ---------------------------------------------- */
 document.getElementById("fullscreenBtn").addEventListener("click", () => {
-  alert("Ha szeretné, a böngésző saját 'Teljes képernyő' funkciójával tud nagyítani.\nA rajzfelület már így is a teljes kijelző méretét rögzíti.");
+  alert("A rajzfelület teljesen kitölti a látható kijelzőt.\nA böngésző UI elemei nem befolyásolják a kimentett képet.");
 });
 
 /* ---------------------------------------------
