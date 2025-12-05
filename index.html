@@ -9,17 +9,20 @@
   body, html {
     margin: 0;
     padding: 0;
-    background: black;
+    background: #111;
     color: white;
     font-family: sans-serif;
-    text-align: center;
     height: 100%;
     overflow: hidden;
   }
 
+  /* Lebegő gombok */
   #buttons {
-    margin: 10px 0;
-    z-index: 10;
+    position: fixed;
+    top: 10px;
+    width: 100%;
+    text-align: center;
+    z-index: 20;
   }
 
   button {
@@ -28,18 +31,27 @@
     margin: 0 8px;
     border-radius: 8px;
     border: none;
+    background: #fff;
+    color: #000;
   }
 
+  /* Instrukció szöveg lebeg */
   #instructions {
-    margin: 10px 0 5px 0;
+    position: fixed;
+    top: 60px;
+    width: 100%;
+    text-align: center;
     font-size: 1.2em;
+    z-index: 20;
   }
 
   canvas {
-    display: block;
-    margin: 0 auto;
-    background: black;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #111;
     touch-action: none;
+    z-index: 1;
   }
 </style>
 </head>
@@ -57,168 +69,165 @@
 
 <script type="module">
 
-  /* ------------------------------
-     SUPABASE IMPORT (v2 ESM MODUL)
-     ------------------------------ */
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
+/* ---------------------------------------------
+   SUPABASE IMPORT (v2 ESM MODUL)
+---------------------------------------------- */
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
-  const SUPABASE_URL = "https://ahzhydrbmpybyosgvekb.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy";
-  const BUCKET = "egykezestartomany";
+const SUPABASE_URL = "https://ahzhydrbmpybyosgvekb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy";
+const BUCKET = "egykezestartomany";
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  /* ------------------------------
-     GOOGLE FORM BEÁLLÍTÁSOK
-     ------------------------------ */
-  const FORM_URL =
-    "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
+/* ---------------------------------------------
+   GOOGLE FORM URL
+---------------------------------------------- */
+const FORM_URL =
+  "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
 
-  const EASY_ENTRY = "entry.2090430824";
-  const HARD_ENTRY = "entry.1822346389";
+const EASY_ENTRY = "entry.2090430824";
+const HARD_ENTRY = "entry.1822346389";
 
-  /* ------------------------------
-     CANVAS MÉRETEZÉSE
-     ------------------------------ */
-  const canvas = document.getElementById("drawingCanvas");
-  const ctx = canvas.getContext("2d");
+/* ---------------------------------------------
+   CANVAS FELÉPÍTÉS
+---------------------------------------------- */
+const canvas = document.getElementById("drawingCanvas");
+const ctx = canvas.getContext("2d");
 
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height =
-      window.innerHeight -
-      document.getElementById("buttons").offsetHeight -
-      70;
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  drawBorder();
+}
+
+function drawBorder() {
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+/* ---------------------------------------------
+   RAJZOLÁS
+---------------------------------------------- */
+let drawing = false;
+
+function getPos(e) {
+  if (e.touches) {
+    return {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
   }
-  window.addEventListener("resize", resizeCanvas);
-  resizeCanvas();
+  return { x: e.clientX, y: e.clientY };
+}
 
-  /* ------------------------------
-     RAJZOLÁS
-     ------------------------------ */
-  let drawing = false;
+function startDraw(e) {
+  drawing = true;
+  draw(e);
+}
 
-  function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    if (e.touches) {
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top,
-      };
-    } else {
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
-    }
+function endDraw() {
+  drawing = false;
+  ctx.beginPath();
+}
+
+function draw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+
+  const pos = getPos(e);
+
+  ctx.lineWidth = 30;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017"; // okkersárga
+
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(pos.x, pos.y);
+}
+
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mouseup", endDraw);
+canvas.addEventListener("mousemove", draw);
+canvas.addEventListener("touchstart", startDraw);
+canvas.addEventListener("touchend", endDraw);
+canvas.addEventListener("touchmove", draw);
+
+/* ---------------------------------------------
+   ÚJRA GOMB
+---------------------------------------------- */
+document.getElementById("resetBtn").addEventListener("click", () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBorder();
+});
+
+/* ---------------------------------------------
+   KÉT LÉPÉS (FEHÉR → OKKERSÁRGA)
+---------------------------------------------- */
+let step = 1;
+let easyImageURL = null;
+
+document.getElementById("doneBtn").addEventListener("click", async () => {
+  const dataURL = canvas.toDataURL("image/jpeg", 0.9);
+  const blob = dataURLtoBlob(dataURL);
+  const filename = `drawing_${Date.now()}.jpg`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(filename, blob);
+
+  if (error) {
+    alert("Hiba a feltöltés során: " + error.message);
+    return;
   }
 
-  function startDraw(e) {
-    drawing = true;
-    draw(e);
-  }
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+  const publicURL = data.publicUrl;
 
-  function endDraw() {
-    drawing = false;
-    ctx.beginPath();
-  }
+  if (step === 1) {
+    easyImageURL = publicURL;
+    step = 2;
 
-  function draw(e) {
-    if (!drawing) return;
-    e.preventDefault();
-    const pos = getPos(e);
-
-    ctx.lineWidth = 30;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "white";
-
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-  }
-
-  canvas.addEventListener("mousedown", startDraw);
-  canvas.addEventListener("mouseup", endDraw);
-  canvas.addEventListener("mousemove", draw);
-
-  canvas.addEventListener("touchstart", startDraw);
-  canvas.addEventListener("touchend", endDraw);
-  canvas.addEventListener("touchmove", draw);
-
-  /* ------------------------------
-     ÚJRA GOMB
-     ------------------------------ */
-  document.getElementById("resetBtn").addEventListener("click", () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-  });
+    drawBorder();
 
-  /* ------------------------------
-     KÉT LÉPÉS (EASY → HARD)
-     ------------------------------ */
-  let step = 1;
-  let easyImageURL = null;
+    document.getElementById("instructions").textContent =
+      "jelölje be kibővített tartomány területét";
+  } else {
+    const hardImageURL = publicURL;
 
-  document.getElementById("doneBtn").addEventListener("click", async () => {
-    const dataURL = canvas.toDataURL("image/png");
-    const blob = dataURLtoBlob(dataURL);
-    const filename = `drawing_${Date.now()}.png`;
+    const redirect =
+      FORM_URL +
+      `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
+      `&${HARD_ENTRY}=${encodeURIComponent(hardImageURL)}`;
 
-    // Feltöltés supabase-re
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(filename, blob);
-
-    if (error) {
-      alert("Hiba a feltöltés során: " + error.message);
-      return;
-    }
-
-    // Publikus URL lekérése
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-    const publicURL = data.publicUrl;
-
-    if (step === 1) {
-      easyImageURL = publicURL;
-      step = 2;
-
-      // Canvas törlése
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Instruction módosítása
-      document.getElementById("instructions").textContent =
-        "jelölje be kibővített tartomány területét";
-    } 
-    else {
-      const hardImageURL = publicURL;
-
-      // Visszairányítás a Google Formra
-      const redirect =
-        FORM_URL +
-        `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
-        `&${HARD_ENTRY}=${encodeURIComponent(hardImageURL)}`;
-
-      window.location.href = redirect;
-    }
-  });
-
-  /* ------------------------------
-     SEGÉDFÜGGVÉNY
-     ------------------------------ */
-  function dataURLtoBlob(dataurl) {
-    const arr = dataurl.split(","),
-      mime = arr[0].match(/:(.*?);/)[1],
-      bstr = atob(arr[1]),
-      n = bstr.length,
-      u8arr = new Uint8Array(n);
-
-    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
-
-    return new Blob([u8arr], { type: mime });
+    window.location.href = redirect;
   }
-</script>
+});
 
+/* ---------------------------------------------
+   DATAURL → BLOB
+---------------------------------------------- */
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  const len = bstr.length;
+  const u8 = new Uint8Array(len);
+
+  for (let i = 0; i < len; i++) {
+    u8[i] = bstr.charCodeAt(i);
+  }
+
+  return new Blob([u8], { type: mime });
+}
+
+</script>
 </body>
 </html>
-
-
