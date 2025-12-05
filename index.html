@@ -54,7 +54,7 @@
     z-index: 20;
   }
 
-  /* CANVAS A KIJELZŐ TETEJÉRE RAGASZTVA */
+  /* CANVAS A KIJELZŐ TETEJÉN */
   canvas {
     position: absolute;
     top: 0;
@@ -107,13 +107,13 @@ const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
   // Fizikai pixelméret
-  const pixelW = screen.width * window.devicePixelRatio;
-  const pixelH = screen.height * window.devicePixelRatio;
+  const pixelW = screen.width * devicePixelRatio;
+  const pixelH = screen.height * devicePixelRatio;
 
   canvas.width = pixelW;
   canvas.height = pixelH;
 
-  // CSS méret (vizuális méret)
+  // CSS méret
   canvas.style.width = screen.width + "px";
   canvas.style.height = screen.height + "px";
 
@@ -122,12 +122,12 @@ function resizeCanvas() {
 
 function drawBorder() {
   ctx.strokeStyle = "white";
-  ctx.lineWidth = 2 * window.devicePixelRatio;
+  ctx.lineWidth = 2 * devicePixelRatio;
   ctx.strokeRect(
-    1 * window.devicePixelRatio,
-    1 * window.devicePixelRatio,
-    canvas.width - 2 * window.devicePixelRatio,
-    canvas.height - 2 * window.devicePixelRatio
+    1 * devicePixelRatio,
+    1 * devicePixelRatio,
+    canvas.width - 2 * devicePixelRatio,
+    canvas.height - 2 * devicePixelRatio
   );
 }
 
@@ -135,7 +135,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 /* ---------------------------------------------
-   RAJZOLÁS – KORREKT KOORDINÁTÁK
+   RAJZOLÁS – OFFSET KOMPENZÁCIÓ!!!
 ---------------------------------------------- */
 let drawing = false;
 let step = 1;
@@ -143,17 +143,18 @@ let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
+  const offsetTop = rect.top;  // <-- A böngésző UI eltolás mértéke
 
   if (e.touches) {
     return {
-      x: (e.touches[0].clientX - rect.left) * window.devicePixelRatio,
-      y: (e.touches[0].clientY - rect.top) * window.devicePixelRatio
+      x: (e.touches[0].clientX - rect.left) * devicePixelRatio,
+      y: (e.touches[0].clientY - offsetTop) * devicePixelRatio
     };
   }
 
   return {
-    x: (e.clientX - rect.left) * window.devicePixelRatio,
-    y: (e.clientY - rect.top) * window.devicePixelRatio
+    x: (e.clientX - rect.left) * devicePixelRatio,
+    y: (e.clientY - offsetTop) * devicePixelRatio
   };
 }
 
@@ -173,9 +174,9 @@ function draw(e) {
 
   const pos = getPos(e);
 
-  ctx.lineWidth = 30 * window.devicePixelRatio;
+  ctx.lineWidth = 30 * devicePixelRatio;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017"; /* okker */
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
   ctx.stroke();
