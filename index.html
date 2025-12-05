@@ -16,7 +16,7 @@
     overflow: hidden;
   }
 
-  /* Gombok egy sorban, középre igazítva */
+  /* Gombok */
   #buttons {
     position: fixed;
     top: 10px;
@@ -36,18 +36,19 @@
   }
 
   #fullscreenBtn {
-    background: #ffffff;
+    background: #FFFFFF;  /* fehér */
   }
 
   #resetBtn {
-    background: #FFD700; /* sárga */
+    background: #FFD700;  /* sárga */
   }
 
   #doneBtn {
-    background: #2ECC71; /* zöld */
+    background: #2ECC71;  /* zöld */
     color: white;
   }
 
+  /* Instrukció */
   #instructions {
     position: fixed;
     top: 65px;
@@ -70,7 +71,6 @@
 
 <body>
 
-<!-- Gombok sorrendje: TELJES KÉPERNYŐ – ÚJRA – KÉSZ -->
 <div id="buttons">
   <button id="fullscreenBtn">Teljes képernyő</button>
   <button id="resetBtn">Újra</button>
@@ -104,72 +104,39 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS
+   CANVAS – VALÓDI TELJES KIJELZŐ MÉRET
 ---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // Fizikai pixelméret
+  const pixelW = screen.width * window.devicePixelRatio;
+  const pixelH = screen.height * window.devicePixelRatio;
+
+  canvas.width = pixelW;
+  canvas.height = pixelH;
+
+  // CSS méret (vizuális méret)
+  canvas.style.width = screen.width + "px";
+  canvas.style.height = screen.height + "px";
+
   drawBorder();
 }
 
 function drawBorder() {
   ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
-}
-
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
-/* ---------------------------------------------
-   FULLSCREEN TOGGLE (iOS kompatibilis!)
----------------------------------------------- */
-const fullscreenBtn = document.getElementById("fullscreenBtn");
-
-function isFullscreen() {
-  return (
-    document.fullscreenElement ||
-    document.webkitFullscreenElement ||
-    document.msFullscreenElement
+  ctx.lineWidth = 2 * window.devicePixelRatio;
+  ctx.strokeRect(
+    1 * window.devicePixelRatio, 
+    1 * window.devicePixelRatio, 
+    canvas.width - 2 * window.devicePixelRatio, 
+    canvas.height - 2 * window.devicePixelRatio
   );
 }
 
-function enterFullscreen() {
-  const el = canvas;   // <-- CSAK EZ működik iPhone-on!
-
-  if (el.requestFullscreen) el.requestFullscreen();
-  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-  else if (el.msRequestFullscreen) el.msRequestFullscreen();
-}
-
-function exitFullscreen() {
-  if (document.exitFullscreen) document.exitFullscreen();
-  else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-  else if (document.msExitFullscreen) document.msExitFullscreen();
-}
-
-fullscreenBtn.addEventListener("click", () => {
-  if (!isFullscreen()) {
-    enterFullscreen();
-  } else {
-    exitFullscreen();
-  }
-});
-
-/* Fullscreen állapot követése */
-function updateFullscreenUI() {
-  fullscreenBtn.textContent = isFullscreen()
-    ? "Kilépés teljes képernyőből"
-    : "Teljes képernyő";
-
-  resizeCanvas();
-}
-
-document.addEventListener("fullscreenchange", updateFullscreenUI);
-document.addEventListener("webkitfullscreenchange", updateFullscreenUI);
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
 /* ---------------------------------------------
    RAJZOLÁS
@@ -179,9 +146,16 @@ let step = 1;
 let easyImageURL = null;
 
 function getPos(e) {
-  if (e.touches)
-    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  return { x: e.clientX, y: e.clientY };
+  if (e.touches) {
+    return {
+      x: e.touches[0].clientX * window.devicePixelRatio,
+      y: e.touches[0].clientY * window.devicePixelRatio
+    };
+  }
+  return {
+    x: e.clientX * window.devicePixelRatio,
+    y: e.clientY * window.devicePixelRatio
+  };
 }
 
 function startDraw(e) {
@@ -200,9 +174,8 @@ function draw(e) {
 
   const pos = getPos(e);
 
-  ctx.lineWidth = 30;
+  ctx.lineWidth = 30 * window.devicePixelRatio;
   ctx.lineCap = "round";
-
   ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
 
   ctx.lineTo(pos.x, pos.y);
@@ -214,10 +187,16 @@ function draw(e) {
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
-
 canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
+
+/* ---------------------------------------------
+   TELJES KÉPERNYŐ GOMB (nem API, csak UX!)
+---------------------------------------------- */
+document.getElementById("fullscreenBtn").addEventListener("click", () => {
+  alert("Ha szeretné, a böngésző saját 'Teljes képernyő' funkciójával tud nagyítani.\nA rajzfelület már így is a teljes kijelző méretét rögzíti.");
+});
 
 /* ---------------------------------------------
    ÚJRA
@@ -265,7 +244,7 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
 });
 
 /* ---------------------------------------------
-   DATAURL -> BLOB
+   DATAURL → BLOB
 ---------------------------------------------- */
 function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(",");
@@ -274,7 +253,9 @@ function dataURLtoBlob(dataurl) {
   const len = bstr.length;
   const u8 = new Uint8Array(len);
 
-  for (let i = 0; i < len; i++) u8[i] = bstr.charCodeAt(i);
+  for (let i = 0; i < len; i++) {
+    u8[i] = bstr.charCodeAt(i);
+  }
 
   return new Blob([u8], { type: mime });
 }
@@ -282,4 +263,3 @@ function dataURLtoBlob(dataurl) {
 </script>
 </body>
 </html>
-
