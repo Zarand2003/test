@@ -34,14 +34,8 @@
     color: #000;
   }
 
-  #resetBtn {
-    background: #FFD700;
-  }
-
-  #doneBtn {
-    background: #2ECC71;
-    color: white;
-  }
+  #resetBtn { background: #FFD700; }
+  #doneBtn  { background: #2ECC71; color: white; }
 
   #instructions {
     position: fixed;
@@ -77,217 +71,136 @@
 <canvas id="drawingCanvas"></canvas>
 
 <script type="module">
-/* ----------------------------------------------------
+/* --------------------------------------------------
    SUPABASE
----------------------------------------------------- */
+-------------------------------------------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
 const supabase = createClient(
   "https://ahzhydrbmpybyosgvekb.supabase.co",
   "sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy"
 );
-
 const BUCKET = "egykezestartomany";
 
-/* ----------------------------------------------------
+/* --------------------------------------------------
    GOOGLE FORM
----------------------------------------------------- */
+-------------------------------------------------- */
 const FORM_URL =
-  "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
+  "https://docs.google.com/forms/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
 
 const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
-/* ----------------------------------------------------
-   VÁSZON MÉRETEZÉS
----------------------------------------------------- */
+/* --------------------------------------------------
+   CANVAS & RAJZOLÁS – STABIL, SKÁLA-FÜGGETLEN
+-------------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  const cssW = screen.width;
-  const cssH = screen.height;
-
-  canvas.style.width = cssW + "px";
-  canvas.style.height = cssH + "px";
-
-  canvas.width = cssW * devicePixelRatio;
-  canvas.height = cssH * devicePixelRatio;
-
-  drawBorder();
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = rect.width  * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
 }
-
-function drawBorder() {
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2 * devicePixelRatio;
-  ctx.strokeRect(
-    1 * devicePixelRatio,
-    1 * devicePixelRatio,
-    canvas.width - 2 * devicePixelRatio,
-    canvas.height - 2 * devicePixelRatio
-  );
-}
-
 resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
-/* ----------------------------------------------------
-   RAJZOLÁS – JAVÍTOTT, MINDIG MŰKÖDŐ KOORDINÁTA KEZELÉS
----------------------------------------------------- */
 let drawing = false;
 let step = 1;
 let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
   return {
-    x: (clientX - rect.left) * (canvas.width / rect.width),
-    y: (clientY - rect.top) * (canvas.height / rect.height)
+    x: x * (canvas.width / rect.width),
+    y: y * (canvas.height / rect.height)
   };
 }
 
-function startDraw(e) {
-  drawing = true;
-  draw(e);
-}
+function startDraw(e){ drawing=true; draw(e); }
+function endDraw(){ drawing=false; ctx.beginPath(); }
 
-function endDraw() {
-  drawing = false;
-  ctx.beginPath();
-}
-
-function draw(e) {
-  if (!drawing) return;
+function draw(e){
+  if(!drawing) return;
   e.preventDefault();
-
-  const pos = getPos(e);
-
+  const p = getPos(e);
   ctx.lineWidth = 30 * devicePixelRatio;
   ctx.lineCap = "round";
-  ctx.strokeStyle = (step === 1 ? "white" : "#D4A017");
-
-  ctx.lineTo(pos.x, pos.y);
+  ctx.strokeStyle = step === 1 ? "white" : "#D4A017";
+  ctx.lineTo(p.x, p.y);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(pos.x, pos.y);
+  ctx.moveTo(p.x, p.y);
 }
 
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
-
 canvas.addEventListener("touchstart", startDraw);
 canvas.addEventListener("touchend", endDraw);
 canvas.addEventListener("touchmove", draw);
 
-/* ----------------------------------------------------
+/* --------------------------------------------------
    ÚJRA
----------------------------------------------------- */
-document.getElementById("resetBtn").addEventListener("click", () => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBorder();
-});
+-------------------------------------------------- */
+resetBtn.onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
 
-/* ----------------------------------------------------
-   B OPCIÓ – WRAP SCREENSHOT
----------------------------------------------------- */
-async function exportAsFullscreenImage() {
+/* --------------------------------------------------
+   EXPORT – „SCREENSHOT-SZERŰ” (A VERZIÓ)
+-------------------------------------------------- */
+async function exportLikeScreenshot(){
+  const dpr = devicePixelRatio;
+  const fullW = screen.width * dpr;
+  const fullH = screen.height * dpr;
 
-  const fullW = screen.width * devicePixelRatio;
-  const fullH = screen.height * devicePixelRatio;
+  const uiHeight = (screen.height - visualViewport.height) * dpr;
 
-  const visibleH = canvas.getBoundingClientRect().height * devicePixelRatio;
-  const canvasH = canvas.height;
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = fullW;
+  exportCanvas.height = fullH;
+  const ex = exportCanvas.getContext("2d");
 
-  const overflow = canvasH - visibleH;
+  ex.fillStyle = "#111";
+  ex.fillRect(0,0,fullW,fullH);
 
-  const fullCanvas = document.createElement("canvas");
-  fullCanvas.width = fullW;
-  fullCanvas.height = fullH;
-  const fullCtx = fullCanvas.getContext("2d");
-
-  fullCtx.fillStyle = "#111";
-  fullCtx.fillRect(0, 0, fullW, fullH);
-
-  if (overflow > 0) {
-    fullCtx.drawImage(
-      canvas,
-      0,
-      visibleH,
-      canvas.width,
-      overflow,
-      0,
-      0,
-      canvas.width,
-      overflow
-    );
-  }
-
-  fullCtx.drawImage(
+  // A LÁTHATÓ CANVAS-RÉSZ bemásolása
+  ex.drawImage(
     canvas,
-    0,
-    0,
-    canvas.width,
-    visibleH,
-    0,
-    overflow,
-    canvas.width,
-    visibleH
+    0, 0, canvas.width, canvas.height,
+    0, uiHeight, canvas.width, canvas.height
   );
 
-  const dataURL = fullCanvas.toDataURL("image/jpeg", 0.95);
-  return dataURLtoBlob(dataURL);
+  return new Promise(res =>
+    exportCanvas.toBlob(b => res(b), "image/jpeg", 0.95)
+  );
 }
 
-function dataURLtoBlob(dataurl) {
-  const arr = dataurl.split(",");
-  const mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  const len = bstr.length;
-  const u8 = new Uint8Array(len);
-  for (let i = 0; i < len; i++) u8[i] = bstr.charCodeAt(i);
-  return new Blob([u8], { type: mime });
-}
-
-/* ----------------------------------------------------
+/* --------------------------------------------------
    KÉSZ
----------------------------------------------------- */
-document.getElementById("doneBtn").addEventListener("click", async () => {
+-------------------------------------------------- */
+doneBtn.onclick = async () => {
+  const blob = await exportLikeScreenshot();
+  const name = `drawing_${Date.now()}.jpg`;
 
-  const blob = await exportAsFullscreenImage();
-  const filename = `drawing_${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from(BUCKET).upload(name, blob);
+  if(error){ alert(error.message); return; }
 
-  const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
+  const url = supabase.storage.from(BUCKET).getPublicUrl(name).data.publicUrl;
 
-  if (error) {
-    alert("Hiba a feltöltés során: " + error.message);
-    return;
-  }
-
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
-
-  const publicURL = data.publicUrl;
-
-  if (step === 1) {
-    easyImageURL = publicURL;
+  if(step === 1){
+    easyImageURL = url;
     step = 2;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBorder();
-    document.getElementById("instructions").textContent =
-      "jelölje be kibővített tartomány területét";
-
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    instructions.textContent = "jelölje be kibővített tartomány területét";
   } else {
-    const redirect =
+    location.href =
       FORM_URL +
       `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
-      `&${HARD_ENTRY}=${encodeURIComponent(publicURL)}`;
-
-    window.location.href = redirect;
+      `&${HARD_ENTRY}=${encodeURIComponent(url)}`;
   }
-});
+};
 </script>
 </body>
 </html>
