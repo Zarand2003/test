@@ -52,15 +52,14 @@
     z-index: 20;
   }
 
-  /* A vászon NEM 100vh, hanem a TELJES KIJELZŐ MAGASSÁGA */
+  /* Vászon: NEM 100vh, hanem a fizikai kijelző mérete szerint lesz beállítva JS-ben */
   canvas {
     position: absolute;
     top: 0;
     left: 0;
 
-    /* EZ FONTOS: a fizikai kijelző magassága */
-    width: 100vw;
-    height: 100vh; /* csak vizuális, igazi méret JS-ben lesz */
+    width: 100vw;   /* vizuális szélesség */
+    height: 100vh;  /* vizuális magasság */
 
     background: #111;
     touch-action: none;
@@ -81,6 +80,9 @@
 <canvas id="drawingCanvas"></canvas>
 
 <script type="module">
+/* ----------------------------------------------------
+   SUPABASE
+---------------------------------------------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
 const supabase = createClient(
@@ -90,26 +92,30 @@ const supabase = createClient(
 
 const BUCKET = "egykezestartomany";
 
+/* ----------------------------------------------------
+   GOOGLE FORM
+---------------------------------------------------- */
 const FORM_URL =
   "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
 
 const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
+/* ----------------------------------------------------
+   VÁSZON MÉRETEZÉS
+---------------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
-/* ----------------------------------------------------
-   NAGY, „KILÓGÓ” VÁSZON MÉRETEZÉSE
----------------------------------------------------- */
 function resizeCanvas() {
+  // A canvas teljes fizikai kijelzőméretet kap
   const cssW = screen.width;
-  const cssH = screen.height;  // teljes fizikai kijelző
+  const cssH = screen.height; // fontos!
 
-  canvas.style.width  = cssW + "px";
+  canvas.style.width = cssW + "px";
   canvas.style.height = cssH + "px";
 
-  canvas.width  = cssW * devicePixelRatio;
+  canvas.width = cssW * devicePixelRatio;
   canvas.height = cssH * devicePixelRatio;
 
   drawBorder();
@@ -137,12 +143,12 @@ let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const px = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const py = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
   return {
-    x: x * devicePixelRatio,
-    y: y * devicePixelRatio
+    x: px * devicePixelRatio,
+    y: py * devicePixelRatio
   };
 }
 
@@ -174,61 +180,74 @@ canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
 
 /* ----------------------------------------------------
-   KÉP EXPORT – TELJES KIJELZŐMÉRETŰ „SCREENSHOT”
+   ÚJRA
 ---------------------------------------------------- */
-async function exportFullscreenComposite() {
-  const fullW = screen.width  * devicePixelRatio;
+document.getElementById("resetBtn").addEventListener("click", () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBorder();
+});
+
+/* ----------------------------------------------------
+   TELJES KIJELZŐS „SCREENSHOT” EXPORT (A opció)
+---------------------------------------------------- */
+async function exportAsFullscreenImage() {
+
+  // TELJES kijelző pixelméret
+  const fullW = screen.width * devicePixelRatio;
   const fullH = screen.height * devicePixelRatio;
 
-  const fullCanvas = document.createElement("canvas");
-  fullCanvas.width  = fullW;
-  fullCanvas.height = fullH;
+  // A látható rajzterület magassága pixelben
+  const visibleH = canvas.getBoundingClientRect().height * devicePixelRatio;
 
+  // A böngésző UI által kitakart felső terület pixelben
+  const cutOff = fullH - visibleH;
+
+  // Teljes screenshot canvas
+  const fullCanvas = document.createElement("canvas");
+  fullCanvas.width = fullW;
+  fullCanvas.height = fullH;
   const fullCtx = fullCanvas.getContext("2d");
 
-  // A teljes képernyőt először kitöltjük háttérrel (#111)
+  // 1) Felső rész pótlása (#111)
   fullCtx.fillStyle = "#111";
   fullCtx.fillRect(0, 0, fullW, fullH);
 
-  // A rajzolt vásznat az ALSÓ ÉLHEZ igazítjuk
+  // 2) A rajzolt vászon ALSÓ élhez igazítása
   fullCtx.drawImage(
     canvas,
     0,
-    fullH - canvas.height,
+    cutOff,            // ez tolja fel a rajzot a kijelző tetejéhez képest
     canvas.width,
     canvas.height
   );
 
+  // 3) JPEG export
   const dataURL = fullCanvas.toDataURL("image/jpeg", 0.95);
   return dataURLtoBlob(dataURL);
 }
 
 function dataURLtoBlob(dataurl) {
-  const arr  = dataurl.split(",");
+  const arr = dataurl.split(",");
   const mime = arr[0].match(/:(.*?);/)[1];
   const bstr = atob(arr[1]);
-  const len  = bstr.length;
-  const u8   = new Uint8Array(len);
-
+  const len = bstr.length;
+  const u8 = new Uint8Array(len);
   for (let i = 0; i < len; i++) u8[i] = bstr.charCodeAt(i);
-
   return new Blob([u8], { type: mime });
 }
 
 /* ----------------------------------------------------
-   KÉSZ GOMB
+   KÉSZ
 ---------------------------------------------------- */
 document.getElementById("doneBtn").addEventListener("click", async () => {
 
-  const blob = await exportFullscreenComposite();
+  const blob = await exportAsFullscreenImage();
   const filename = `drawing_${Date.now()}.jpg`;
 
-  const { error } = await supabase
-    .storage.from(BUCKET)
-    .upload(filename, blob);
+  const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
 
   if (error) {
-    alert("Hiba: " + error.message);
+    alert("Hiba a feltöltés során: " + error.message);
     return;
   }
 
@@ -248,6 +267,7 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
       "jelölje be kibővített tartomány területét";
 
   } else {
+
     const redirect =
       FORM_URL +
       `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
