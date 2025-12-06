@@ -3,117 +3,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Canvas teszt – kijelző méret</title>
+<title>Rajzolós felület</title>
 
 <style>
-  html, body {
+  body, html {
     margin: 0;
     padding: 0;
     background: #111;
+    color: white;
+    font-family: sans-serif;
     height: 100%;
     overflow: hidden;
   }
 
-  #info {
+  /* Gombok */
+  #buttons {
     position: fixed;
-    top: 0;
+    top: 10px;
     width: 100%;
-    background: rgba(0,0,0,0.6);
-    color: #0f0;
-    font-family: monospace;
-    font-size: 12px;
-    padding: 6px;
-    z-index: 10;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  button {
+    padding: 10px 18px;
+    font-size: 1.1em;
+    border-radius: 8px;
+    border: none;
+    color: #000;
+  }
+
+  #fullscreenBtn {
+    background: #FFFFFF;  /* fehér */
+  }
+
+  #resetBtn {
+    background: #FFD700;  /* sárga */
+  }
+
+  #doneBtn {
+    background: #2ECC71;  /* zöld */
+    color: white;
+  }
+
+  /* Instrukció */
+  #instructions {
+    position: fixed;
+    top: 65px;
+    width: 100%;
+    text-align: center;
+    font-size: 1.2em;
+    z-index: 20;
   }
 
   canvas {
     position: absolute;
     top: 0;
     left: 0;
-
-    /* CSS MÉRET = TELJES KIJELZŐ */
-    width: 100vw;
-    height: 100vh;
-
-    background: #222;
+    background: #111;
     touch-action: none;
+    z-index: 1;
   }
 </style>
 </head>
 
 <body>
 
-<div id="info">initial</div>
-<canvas id="c"></canvas>
+<div id="buttons">
+  <button id="fullscreenBtn">Teljes képernyő</button>
+  <button id="resetBtn">Újra</button>
+  <button id="doneBtn">Kész</button>
+</div>
 
-<script>
-const canvas = document.getElementById("c");
+<div id="instructions">jelölje be kényelmes tartomány területét</div>
+
+<canvas id="drawingCanvas"></canvas>
+
+<script type="module">
+
+/* ---------------------------------------------
+   SUPABASE
+---------------------------------------------- */
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
+
+const SUPABASE_URL = "https://ahzhydrbmpybyosgvekb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy";
+const BUCKET = "egykezestartomany";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ---------------------------------------------
+   GOOGLE FORM
+---------------------------------------------- */
+const FORM_URL =
+  "https://docs.google.com/forms/u/0/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
+
+const EASY_ENTRY = "entry.2090430824";
+const HARD_ENTRY = "entry.1822346389";
+
+/* ---------------------------------------------
+   CANVAS – VALÓDI TELJES KIJELZŐ MÉRET
+---------------------------------------------- */
+const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
-const info = document.getElementById("info");
 
-function resize() {
-  const dpr = window.devicePixelRatio;
+function resizeCanvas() {
+  // Fizikai pixelméret
+  const pixelW = screen.width * window.devicePixelRatio;
+  const pixelH = screen.height * window.devicePixelRatio;
 
-  // TELJES KIJELZŐ (screen)
-  const sw = screen.width;
-  const sh = screen.height;
+  canvas.width = pixelW;
+  canvas.height = pixelH;
 
-  // Vászon FIZIKAI mérete
-  canvas.width  = sw * dpr;
-  canvas.height = sh * dpr;
+  // CSS méret (vizuális méret)
+  canvas.style.width = screen.width + "px";
+  canvas.style.height = screen.height + "px";
 
-  // Debug info
-  info.textContent =
-    `screen: ${sw}x${sh} | ` +
-    `viewport: ${window.innerWidth}x${window.innerHeight} | ` +
-    `canvas(px): ${canvas.width}x${canvas.height} | ` +
-    `dpr: ${dpr}`;
-
-  ctx.strokeStyle = "#0f0";
-  ctx.lineWidth = 4 * dpr;
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+  drawBorder();
 }
 
-resize();
-window.addEventListener("resize", resize);
+function drawBorder() {
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2 * window.devicePixelRatio;
+  ctx.strokeRect(
+    1 * window.devicePixelRatio, 
+    1 * window.devicePixelRatio, 
+    canvas.width - 2 * window.devicePixelRatio, 
+    canvas.height - 2 * window.devicePixelRatio
+  );
+}
 
-/* RAJZOLÁS – BIZTOSAN MŰKÖDIK */
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+/* ---------------------------------------------
+   RAJZOLÁS
+---------------------------------------------- */
 let drawing = false;
+let step = 1;
+let easyImageURL = null;
 
-function pos(e) {
-  const r = canvas.getBoundingClientRect();
-  const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-  const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-
+function getPos(e) {
+  if (e.touches) {
+    return {
+      x: e.touches[0].clientX * window.devicePixelRatio,
+      y: e.touches[0].clientY * window.devicePixelRatio
+    };
+  }
   return {
-    x: x * (canvas.width / r.width),
-    y: y * (canvas.height / r.height)
+    x: e.clientX * window.devicePixelRatio,
+    y: e.clientY * window.devicePixelRatio
   };
 }
 
-canvas.addEventListener("mousedown", e => { drawing = true; });
-canvas.addEventListener("mouseup", () => drawing = false);
-canvas.addEventListener("mousemove", e => {
-  if (!drawing) return;
-  const p = pos(e);
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, 8 * devicePixelRatio, 0, Math.PI * 2);
-  ctx.fill();
-});
+function startDraw(e) {
+  drawing = true;
+  draw(e);
+}
 
-canvas.addEventListener("touchstart", e => { drawing = true; });
-canvas.addEventListener("touchend", () => drawing = false);
-canvas.addEventListener("touchmove", e => {
+function endDraw() {
+  drawing = false;
+  ctx.beginPath();
+}
+
+function draw(e) {
+  if (!drawing) return;
   e.preventDefault();
-  if (!drawing) return;
-  const p = pos(e);
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, 8 * devicePixelRatio, 0, Math.PI * 2);
-  ctx.fill();
-});
-</script>
 
+  const pos = getPos(e);
+
+  ctx.lineWidth = 30 * window.devicePixelRatio;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = (step === 1) ? "white" : "#D4A017";
+
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(pos.x, pos.y);
+}
+
+canvas.addEventListener("mousedown", startDraw);
+canvas.addEventListener("mouseup", endDraw);
+canvas.addEventListener("mousemove", draw);
+canvas.addEventListener("touchstart", startDraw);
+canvas.addEventListener("touchend", endDraw);
+canvas.addEventListener("touchmove", draw);
+
+/* ---------------------------------------------
+   TELJES KÉPERNYŐ GOMB (nem API, csak UX!)
+---------------------------------------------- */
+document.getElementById("fullscreenBtn").addEventListener("click", () => {
+  alert("Ha szeretné, a böngésző saját 'Teljes képernyő' funkciójával tud nagyítani.\nA rajzfelület már így is a teljes kijelző méretét rögzíti.");
+});
+
+/* ---------------------------------------------
+   ÚJRA
+---------------------------------------------- */
+document.getElementById("resetBtn").addEventListener("click", () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBorder();
+});
+
+/* ---------------------------------------------
+   KÉSZ
+---------------------------------------------- */
+document.getElementById("doneBtn").addEventListener("click", async () => {
+  const dataURL = canvas.toDataURL("image/jpeg", 0.9);
+  const blob = dataURLtoBlob(dataURL);
+  const filename = `drawing_${Date.now()}.jpg`;
+
+  const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
+
+  if (error) {
+    alert("Hiba a feltöltés során: " + error.message);
+    return;
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+  const publicURL = data.publicUrl;
+
+  if (step === 1) {
+    easyImageURL = publicURL;
+    step = 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBorder();
+
+    document.getElementById("instructions").textContent =
+      "jelölje be kibővített tartomány területét";
+  } else {
+    const redirect =
+      FORM_URL +
+      `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
+      `&${HARD_ENTRY}=${encodeURIComponent(publicURL)}`;
+
+    window.location.href = redirect;
+  }
+});
+
+/* ---------------------------------------------
+   DATAURL → BLOB
+---------------------------------------------- */
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(",");
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  const len = bstr.length;
+  const u8 = new Uint8Array(len);
+
+  for (let i = 0; i < len; i++) {
+    u8[i] = bstr.charCodeAt(i);
+  }
+
+  return new Blob([u8], { type: mime });
+}
+
+</script>
 </body>
 </html>
