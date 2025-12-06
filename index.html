@@ -56,8 +56,8 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100vw;   /* látható méret */
-    height: 100vh;  /* látható méret */
+    width: 100vw;
+    height: 100vh;
     background: #111;
     touch-action: none;
     z-index: 1;
@@ -99,7 +99,7 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ----------------------------------------------------
-   VÁSZON MÉRETEZÉS (túlméretezett canvas)
+   VÁSZON MÉRETEZÉS
 ---------------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
@@ -131,7 +131,7 @@ function drawBorder() {
 resizeCanvas();
 
 /* ----------------------------------------------------
-   RAJZOLÁS
+   RAJZOLÁS – JAVÍTOTT, MINDIG MŰKÖDŐ KOORDINÁTA KEZELÉS
 ---------------------------------------------------- */
 let drawing = false;
 let step = 1;
@@ -139,11 +139,12 @@ let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
   return {
-    x: x * devicePixelRatio,
-    y: y * devicePixelRatio
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height)
   };
 }
 
@@ -190,7 +191,7 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 /* ----------------------------------------------------
-   B OPCIÓ – WRAP: a lelógó rész a screenshot TETEJÉRE kerül
+   B OPCIÓ – WRAP SCREENSHOT
 ---------------------------------------------------- */
 async function exportAsFullscreenImage() {
 
@@ -210,7 +211,6 @@ async function exportAsFullscreenImage() {
   fullCtx.fillStyle = "#111";
   fullCtx.fillRect(0, 0, fullW, fullH);
 
-  // 1: a lelógó rész fentre kerül
   if (overflow > 0) {
     fullCtx.drawImage(
       canvas,
@@ -225,7 +225,6 @@ async function exportAsFullscreenImage() {
     );
   }
 
-  // 2: a látható rész alá kerül
   fullCtx.drawImage(
     canvas,
     0,
