@@ -192,39 +192,44 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 ---------------------------------------------------- */
 async function exportAsFullscreenImage() {
 
-  // TELJES kijelző pixelméret
+  // Képernyő teljes pixelmérete
   const fullW = screen.width * devicePixelRatio;
   const fullH = screen.height * devicePixelRatio;
 
-  // A látható rajzterület magassága pixelben
+  // Látható magasság pixelben
   const visibleH = canvas.getBoundingClientRect().height * devicePixelRatio;
 
-  // A böngésző UI által kitakart felső terület pixelben
-  const cutOff = fullH - visibleH;
+  // A canvas TELJES magassága (pixel)
+  const canvasH = canvas.height;
 
-  // Teljes screenshot canvas
+  // Ennyivel lóg le a vászon alul
+  const overflow = canvasH - visibleH;
+
+  // Létrehozzuk a screenshot vásznat
   const fullCanvas = document.createElement("canvas");
   fullCanvas.width = fullW;
   fullCanvas.height = fullH;
+
   const fullCtx = fullCanvas.getContext("2d");
 
-  // 1) Felső rész pótlása (#111)
+  // 1) Háttér (UI helyett)
   fullCtx.fillStyle = "#111";
   fullCtx.fillRect(0, 0, fullW, fullH);
 
-  // 2) A rajzolt vászon ALSÓ élhez igazítása
-  fullCtx.drawImage(
-    canvas,
-    0,
-    cutOff,            // ez tolja fel a rajzot a kijelző tetejéhez képest
-    canvas.width,
-    canvas.height
-  );
-
-  // 3) JPEG export
-  const dataURL = fullCanvas.toDataURL("image/jpeg", 0.95);
-  return dataURLtoBlob(dataURL);
-}
+  // 2) Először rajzoljuk be a lelógó részt: ez kerül a screenshot TETEJÉRE
+  if (overflow > 0) {
+    fullCtx.drawImage(
+      canvas,
+      0,
+      visibleH,          // induló y (canvas látható rész alja)
+      canvas.width,
+      overflow,          // ennyi lógott le
+      0,
+      0,                 // screenshot tetejére kerül
+      canvas.width,
+      overflow
+    );
+  }
 
 function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(",");
@@ -280,3 +285,4 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
 </script>
 </body>
 </html>
+
