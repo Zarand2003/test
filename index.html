@@ -210,7 +210,68 @@ document.getElementById("resetBtn").addEventListener("click", () => {
    KÉSZ
 ---------------------------------------------- */
 document.getElementById("doneBtn").addEventListener("click", async () => {
-  const dataURL = canvas.toDataURL("image/jpeg", 0.9);
+  document.getElementById("doneBtn").addEventListener("click", async () => {
+
+  const dpr = window.devicePixelRatio;
+
+  // Screenshot-méretű export canvas
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = screen.width * dpr;
+  exportCanvas.height = screen.height * dpr;
+  const ex = exportCanvas.getContext("2d");
+
+  // UI sáv magassága (felső rész, amit a böngésző elvesz)
+  const uiHeight = (screen.height - visualViewport.height) * dpr;
+
+  // háttér
+  ex.fillStyle = "#111";
+  ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+  // CANVAS LÁTHATÓ RÉSZÉNEK BEMÁSOLÁSA
+  ex.drawImage(
+    canvas,
+    0,                 // forrás x
+    0,                 // forrás y
+    canvas.width,      // forrás szélesség
+    canvas.height - uiHeight, // CSAK a látható rész
+    0,                 // cél x
+    uiHeight,          // cél y (UI alá!)
+    exportCanvas.width,
+    exportCanvas.height - uiHeight
+  );
+
+  // Blob
+  const blob = await new Promise(res =>
+    exportCanvas.toBlob(b => res(b), "image/jpeg", 0.95)
+  );
+
+  const filename = `drawing_${Date.now()}.jpg`;
+
+  const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
+  if (error) {
+    alert("Hiba a feltöltés során: " + error.message);
+    return;
+  }
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+  const publicURL = data.publicUrl;
+
+  if (step === 1) {
+    easyImageURL = publicURL;
+    step = 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBorder();
+    document.getElementById("instructions").textContent =
+      "jelölje be kibővített tartomány területét";
+  } else {
+    const redirect =
+      FORM_URL +
+      `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
+      `&${HARD_ENTRY}=${encodeURIComponent(publicURL)}`;
+    window.location.href = redirect;
+  }
+});
+
   const blob = dataURLtoBlob(dataURL);
   const filename = `drawing_${Date.now()}.jpg`;
 
@@ -263,3 +324,4 @@ function dataURLtoBlob(dataurl) {
 </script>
 </body>
 </html>
+
