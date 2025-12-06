@@ -16,6 +16,7 @@
     overflow: hidden;
   }
 
+  /* Gombok */
   #buttons {
     position: fixed;
     top: 10px;
@@ -43,6 +44,7 @@
     color: white;
   }
 
+  /* Instrukció */
   #instructions {
     position: fixed;
     top: 65px;
@@ -52,6 +54,7 @@
     z-index: 10;
   }
 
+  /* Canvas = csak a ténylegesen rajzolható terület */
   canvas {
     position: absolute;
     top: 0;
@@ -75,7 +78,9 @@
 <canvas id="drawingCanvas"></canvas>
 
 <script type="module">
-/* ---------------- SUPABASE ---------------- */
+/* ---------------------------------------------
+   SUPABASE
+---------------------------------------------- */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
 
 const supabase = createClient(
@@ -85,24 +90,28 @@ const supabase = createClient(
 
 const BUCKET = "egykezestartomany";
 
-/* ---------------- GOOGLE FORM ---------------- */
+/* ---------------------------------------------
+   GOOGLE FORM
+---------------------------------------------- */
 const FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/viewform";
+  "https://docs.google.com/forms/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
 
 const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
-/* ---------------- CANVAS ---------------- */
+/* ---------------------------------------------
+   CANVAS – UI NÉLKÜLI TERÜLET
+---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio;
 
-  canvas.style.width = window.innerWidth + "px";
+  canvas.style.width  = window.innerWidth + "px";
   canvas.style.height = window.innerHeight + "px";
 
-  canvas.width = window.innerWidth * dpr;
+  canvas.width  = window.innerWidth  * dpr;
   canvas.height = window.innerHeight * dpr;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -113,7 +122,9 @@ function resizeCanvas() {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-/* ---------------- BORDER ---------------- */
+/* ---------------------------------------------
+   FEHÉR KERET
+---------------------------------------------- */
 function drawBorder() {
   ctx.save();
   ctx.lineWidth = 2;
@@ -127,26 +138,30 @@ function drawBorder() {
   ctx.restore();
 }
 
-/* ---------------- DRAWING ---------------- */
+/* ---------------------------------------------
+   RAJZOLÁS
+---------------------------------------------- */
 let drawing = false;
 let step = 1;
 let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = e.touches ? e.touches[0].clientX : e.clientX;
-  const y = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: x - rect.left, y: y - rect.top };
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
 }
 
 function startDraw(e) {
-  e.preventDefault();
   drawing = true;
   draw(e);
 }
 
-function endDraw(e) {
-  e.preventDefault();
+function endDraw() {
   drawing = false;
   ctx.beginPath();
 }
@@ -168,31 +183,35 @@ function draw(e) {
 }
 
 canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mousemove", draw);
 canvas.addEventListener("mouseup", endDraw);
+canvas.addEventListener("mousemove", draw);
 
-canvas.addEventListener("touchstart", startDraw, { passive: false });
-canvas.addEventListener("touchmove", draw, { passive: false });
-canvas.addEventListener("touchend", endDraw, { passive: false });
+canvas.addEventListener("touchstart", startDraw);
+canvas.addEventListener("touchend", endDraw);
+canvas.addEventListener("touchmove", draw);
 
-/* ---------------- RESET ---------------- */
+/* ---------------------------------------------
+   ÚJRA
+---------------------------------------------- */
 document.getElementById("resetBtn").addEventListener("click", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBorder();
 });
 
-/* ---------------- SAVE ---------------- */
+/* ---------------------------------------------
+   KÉSZ – KIMENTÉS CSAK A RAJZOLHATÓ TERÜLETRŐL
+---------------------------------------------- */
 document.getElementById("doneBtn").addEventListener("click", async () => {
 
-  const blob = await new Promise(r =>
-    canvas.toBlob(b => r(b), "image/jpeg", 0.95)
+  const blob = await new Promise(res =>
+    canvas.toBlob(b => res(b), "image/jpeg", 0.95)
   );
 
   const filename = `drawing_${Date.now()}.jpg`;
 
   const { error } = await supabase.storage.from(BUCKET).upload(filename, blob);
   if (error) {
-    alert("Feltöltési hiba: " + error.message);
+    alert("Hiba a feltöltés során: " + error.message);
     return;
   }
 
@@ -211,7 +230,7 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
   } else {
     const redirect =
       FORM_URL +
-      `?usp=pp_url&${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
+      `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
       `&${HARD_ENTRY}=${encodeURIComponent(publicURL)}`;
 
     window.location.href = redirect;
