@@ -99,9 +99,12 @@ const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
-  canvas.width  = rect.width  * window.devicePixelRatio;
-  canvas.height = rect.height * window.devicePixelRatio;
-}
+  const dpr = window.devicePixelRatio;
+
+  const extra = Math.round(rect.height * 0.4); // +40% alul kilógás
+
+  canvas.width = rect.width * dpr;
+  canvas.height = (rect.height + extra) * dpr;
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
@@ -204,3 +207,4 @@ doneBtn.onclick = async () => {
 </script>
 </body>
 </html>
+
