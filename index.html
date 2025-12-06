@@ -54,13 +54,14 @@
     z-index: 10;
   }
 
-  /* Canvas = csak a TÉNYLEGES, UI NÉLKÜLI TERÜLET */
+  /* Canvas = csak a ténylegesen rajzolható terület */
   canvas {
     position: absolute;
     top: 0;
     left: 0;
     background: #111;
     touch-action: none;
+    z-index: 1;
   }
 </style>
 </head>
@@ -99,7 +100,7 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ---------------------------------------------
-   CANVAS – CSAK RAJZOLHATÓ TERÜLET
+   CANVAS – UI NÉLKÜLI TERÜLET
 ---------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
@@ -114,13 +115,31 @@ function resizeCanvas() {
   canvas.height = window.innerHeight * dpr;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  drawBorder();
 }
 
-resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
 /* ---------------------------------------------
-   RAJZOLÁS (STABIL, PLATFORMFÜGGETLEN)
+   FEHÉR KERET
+---------------------------------------------- */
+function drawBorder() {
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(
+    1,
+    1,
+    canvas.width / window.devicePixelRatio - 2,
+    canvas.height / window.devicePixelRatio - 2
+  );
+  ctx.restore();
+}
+
+/* ---------------------------------------------
+   RAJZOLÁS
 ---------------------------------------------- */
 let drawing = false;
 let step = 1;
@@ -176,6 +195,7 @@ canvas.addEventListener("touchmove", draw);
 ---------------------------------------------- */
 document.getElementById("resetBtn").addEventListener("click", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBorder();
 });
 
 /* ---------------------------------------------
@@ -203,6 +223,7 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
     step = 2;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBorder();
 
     document.getElementById("instructions").textContent =
       "jelölje be kibővített tartomány területét";
