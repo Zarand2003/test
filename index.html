@@ -3,208 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rajzolós felület</title>
+<title>Canvas teszt – kijelző méret</title>
 
 <style>
   html, body {
     margin: 0;
     padding: 0;
     background: #111;
-    color: white;
-    font-family: sans-serif;
     height: 100%;
     overflow: hidden;
   }
 
-  #buttons {
+  #info {
     position: fixed;
-    top: 10px;
+    top: 0;
     width: 100%;
-    z-index: 30;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  button {
-    padding: 10px 18px;
-    font-size: 1.1em;
-    border-radius: 8px;
-    border: none;
-    color: #000;
-  }
-
-  #resetBtn { background: #FFD700; }
-  #doneBtn  { background: #2ECC71; color: white; }
-
-  #instructions {
-    position: fixed;
-    top: 65px;
-    width: 100%;
-    text-align: center;
-    font-size: 1.2em;
-    z-index: 20;
+    background: rgba(0,0,0,0.6);
+    color: #0f0;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 6px;
+    z-index: 10;
   }
 
   canvas {
     position: absolute;
     top: 0;
     left: 0;
+
+    /* CSS MÉRET = TELJES KIJELZŐ */
     width: 100vw;
     height: 100vh;
-    background: #111;
+
+    background: #222;
     touch-action: none;
-    z-index: 1;
   }
 </style>
 </head>
 
 <body>
 
-<div id="buttons">
-  <button id="resetBtn">Újra</button>
-  <button id="doneBtn">Kész</button>
-</div>
+<div id="info">initial</div>
+<canvas id="c"></canvas>
 
-<div id="instructions">jelölje be kényelmes tartomány területét</div>
-
-<canvas id="drawingCanvas"></canvas>
-
-<script type="module">
-/* --------------------------------------------------
-   SUPABASE
--------------------------------------------------- */
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.1/+esm";
-
-const supabase = createClient(
-  "https://ahzhydrbmpybyosgvekb.supabase.co",
-  "sb_publishable_WQKWTmLYIxq3tUdfFm_6Dw_U6RAb0jy"
-);
-const BUCKET = "egykezestartomany";
-
-/* --------------------------------------------------
-   GOOGLE FORM
--------------------------------------------------- */
-const FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSfUxMmPoLPqHGZKovDs2eukDpj67zGGKkBYuD7xtBwdSgRE8Q/formResponse";
-
-const EASY_ENTRY = "entry.2090430824";
-const HARD_ENTRY = "entry.1822346389";
-
-/* --------------------------------------------------
-   CANVAS & RAJZOLÁS – STABIL, SKÁLA-FÜGGETLEN
--------------------------------------------------- */
-const canvas = document.getElementById("drawingCanvas");
+<script>
+const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
+const info = document.getElementById("info");
 
-function resizeCanvas() {
-  const rect = canvas.getBoundingClientRect();
+function resize() {
   const dpr = window.devicePixelRatio;
 
-  const extra = Math.round(rect.height * 0.4); // +40% alul kilógás
+  // TELJES KIJELZŐ (screen)
+  const sw = screen.width;
+  const sh = screen.height;
 
-  canvas.width = rect.width * dpr;
-  canvas.height = (rect.height + extra) * dpr;
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+  // Vászon FIZIKAI mérete
+  canvas.width  = sw * dpr;
+  canvas.height = sh * dpr;
 
+  // Debug info
+  info.textContent =
+    `screen: ${sw}x${sh} | ` +
+    `viewport: ${window.innerWidth}x${window.innerHeight} | ` +
+    `canvas(px): ${canvas.width}x${canvas.height} | ` +
+    `dpr: ${dpr}`;
+
+  ctx.strokeStyle = "#0f0";
+  ctx.lineWidth = 4 * dpr;
+  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+}
+
+resize();
+window.addEventListener("resize", resize);
+
+/* RAJZOLÁS – BIZTOSAN MŰKÖDIK */
 let drawing = false;
-let step = 1;
-let easyImageURL = null;
 
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+function pos(e) {
+  const r = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+
   return {
-    x: x * (canvas.width / rect.width),
-    y: y * (canvas.height / rect.height)
+    x: x * (canvas.width / r.width),
+    y: y * (canvas.height / r.height)
   };
 }
 
-function startDraw(e){ drawing=true; draw(e); }
-function endDraw(){ drawing=false; ctx.beginPath(); }
-
-function draw(e){
-  if(!drawing) return;
-  e.preventDefault();
-  const p = getPos(e);
-  ctx.lineWidth = 30 * devicePixelRatio;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = step === 1 ? "white" : "#D4A017";
-  ctx.lineTo(p.x, p.y);
-  ctx.stroke();
+canvas.addEventListener("mousedown", e => { drawing = true; });
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("mousemove", e => {
+  if (!drawing) return;
+  const p = pos(e);
+  ctx.fillStyle = "#fff";
   ctx.beginPath();
-  ctx.moveTo(p.x, p.y);
-}
+  ctx.arc(p.x, p.y, 8 * devicePixelRatio, 0, Math.PI * 2);
+  ctx.fill();
+});
 
-canvas.addEventListener("mousedown", startDraw);
-canvas.addEventListener("mouseup", endDraw);
-canvas.addEventListener("mousemove", draw);
-canvas.addEventListener("touchstart", startDraw);
-canvas.addEventListener("touchend", endDraw);
-canvas.addEventListener("touchmove", draw);
-
-/* --------------------------------------------------
-   ÚJRA
--------------------------------------------------- */
-resetBtn.onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
-
-/* --------------------------------------------------
-   EXPORT – „SCREENSHOT-SZERŰ” (A VERZIÓ)
--------------------------------------------------- */
-async function exportLikeScreenshot(){
-  const dpr = devicePixelRatio;
-  const fullW = screen.width * dpr;
-  const fullH = screen.height * dpr;
-
-  const uiHeight = (screen.height - visualViewport.height) * dpr;
-
-  const exportCanvas = document.createElement("canvas");
-  exportCanvas.width = fullW;
-  exportCanvas.height = fullH;
-  const ex = exportCanvas.getContext("2d");
-
-  ex.fillStyle = "#111";
-  ex.fillRect(0,0,fullW,fullH);
-
-  // A LÁTHATÓ CANVAS-RÉSZ bemásolása
-  ex.drawImage(
-    canvas,
-    0, 0, canvas.width, canvas.height,
-    0, uiHeight, canvas.width, canvas.height
-  );
-
-  return new Promise(res =>
-    exportCanvas.toBlob(b => res(b), "image/jpeg", 0.95)
-  );
-}
-
-/* --------------------------------------------------
-   KÉSZ
--------------------------------------------------- */
-doneBtn.onclick = async () => {
-  const blob = await exportLikeScreenshot();
-  const name = `drawing_${Date.now()}.jpg`;
-
-  const { error } = await supabase.storage.from(BUCKET).upload(name, blob);
-  if(error){ alert(error.message); return; }
-
-  const url = supabase.storage.from(BUCKET).getPublicUrl(name).data.publicUrl;
-
-  if(step === 1){
-    easyImageURL = url;
-    step = 2;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    instructions.textContent = "jelölje be kibővített tartomány területét";
-  } else {
-    location.href =
-      FORM_URL +
-      `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
-      `&${HARD_ENTRY}=${encodeURIComponent(url)}`;
-  }
-};
+canvas.addEventListener("touchstart", e => { drawing = true; });
+canvas.addEventListener("touchend", () => drawing = false);
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (!drawing) return;
+  const p = pos(e);
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 8 * devicePixelRatio, 0, Math.PI * 2);
+  ctx.fill();
+});
 </script>
+
 </body>
 </html>
-
