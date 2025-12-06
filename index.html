@@ -210,9 +210,9 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
       "jelölje be kibővített tartomány területét";
   } else {
     const redirect =
-      FORM_URL +
-      `?usp=pp_url&${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
-      `&${HARD_ENTRY}=${encodeURIComponent(publicURL)}`;
+  FORM_URL +
+  `?entry.2090430824=${encodeURIComponent(easyImageURL)}` +
+  `&entry.1822346389=${encodeURIComponent(publicURL)}`;
 
     window.location.href = redirect;
   }
@@ -221,3 +221,4 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
