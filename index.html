@@ -52,15 +52,12 @@
     z-index: 20;
   }
 
-  /* Vászon: NEM 100vh, hanem a fizikai kijelző mérete szerint lesz beállítva JS-ben */
   canvas {
     position: absolute;
     top: 0;
     left: 0;
-
-    width: 100vw;   /* vizuális szélesség */
-    height: 100vh;  /* vizuális magasság */
-
+    width: 100vw;   /* látható méret */
+    height: 100vh;  /* látható méret */
     background: #111;
     touch-action: none;
     z-index: 1;
@@ -102,15 +99,14 @@ const EASY_ENTRY = "entry.2090430824";
 const HARD_ENTRY = "entry.1822346389";
 
 /* ----------------------------------------------------
-   VÁSZON MÉRETEZÉS
+   VÁSZON MÉRETEZÉS (túlméretezett canvas)
 ---------------------------------------------------- */
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
 
 function resizeCanvas() {
-  // A canvas teljes fizikai kijelzőméretet kap
   const cssW = screen.width;
-  const cssH = screen.height; // fontos!
+  const cssH = screen.height;
 
   canvas.style.width = cssW + "px";
   canvas.style.height = cssH + "px";
@@ -143,17 +139,23 @@ let easyImageURL = null;
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const px = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  const py = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
   return {
-    x: px * devicePixelRatio,
-    y: py * devicePixelRatio
+    x: x * devicePixelRatio,
+    y: y * devicePixelRatio
   };
 }
 
-function startDraw(e) { drawing = true; draw(e); }
-function endDraw() { drawing = false; ctx.beginPath(); }
+function startDraw(e) {
+  drawing = true;
+  draw(e);
+}
+
+function endDraw() {
+  drawing = false;
+  ctx.beginPath();
+}
 
 function draw(e) {
   if (!drawing) return;
@@ -171,13 +173,13 @@ function draw(e) {
   ctx.moveTo(pos.x, pos.y);
 }
 
-canvas.addEventListener("touchstart", startDraw);
-canvas.addEventListener("touchend", endDraw);
-canvas.addEventListener("touchmove", draw);
-
 canvas.addEventListener("mousedown", startDraw);
 canvas.addEventListener("mouseup", endDraw);
 canvas.addEventListener("mousemove", draw);
+
+canvas.addEventListener("touchstart", startDraw);
+canvas.addEventListener("touchend", endDraw);
+canvas.addEventListener("touchmove", draw);
 
 /* ----------------------------------------------------
    ÚJRA
@@ -188,48 +190,57 @@ document.getElementById("resetBtn").addEventListener("click", () => {
 });
 
 /* ----------------------------------------------------
-   TELJES KIJELZŐS „SCREENSHOT” EXPORT (A opció)
+   B OPCIÓ – WRAP: a lelógó rész a screenshot TETEJÉRE kerül
 ---------------------------------------------------- */
 async function exportAsFullscreenImage() {
 
-  // Képernyő teljes pixelmérete
   const fullW = screen.width * devicePixelRatio;
   const fullH = screen.height * devicePixelRatio;
 
-  // Látható magasság pixelben
   const visibleH = canvas.getBoundingClientRect().height * devicePixelRatio;
-
-  // A canvas TELJES magassága (pixel)
   const canvasH = canvas.height;
 
-  // Ennyivel lóg le a vászon alul
   const overflow = canvasH - visibleH;
 
-  // Létrehozzuk a screenshot vásznat
   const fullCanvas = document.createElement("canvas");
   fullCanvas.width = fullW;
   fullCanvas.height = fullH;
-
   const fullCtx = fullCanvas.getContext("2d");
 
-  // 1) Háttér (UI helyett)
   fullCtx.fillStyle = "#111";
   fullCtx.fillRect(0, 0, fullW, fullH);
 
-  // 2) Először rajzoljuk be a lelógó részt: ez kerül a screenshot TETEJÉRE
+  // 1: a lelógó rész fentre kerül
   if (overflow > 0) {
     fullCtx.drawImage(
       canvas,
       0,
-      visibleH,          // induló y (canvas látható rész alja)
+      visibleH,
       canvas.width,
-      overflow,          // ennyi lógott le
+      overflow,
       0,
-      0,                 // screenshot tetejére kerül
+      0,
       canvas.width,
       overflow
     );
   }
+
+  // 2: a látható rész alá kerül
+  fullCtx.drawImage(
+    canvas,
+    0,
+    0,
+    canvas.width,
+    visibleH,
+    0,
+    overflow,
+    canvas.width,
+    visibleH
+  );
+
+  const dataURL = fullCanvas.toDataURL("image/jpeg", 0.95);
+  return dataURLtoBlob(dataURL);
+}
 
 function dataURLtoBlob(dataurl) {
   const arr = dataurl.split(",");
@@ -256,9 +267,7 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
     return;
   }
 
-  const { data } = supabase
-    .storage.from(BUCKET)
-    .getPublicUrl(filename);
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
 
   const publicURL = data.publicUrl;
 
@@ -272,7 +281,6 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
       "jelölje be kibővített tartomány területét";
 
   } else {
-
     const redirect =
       FORM_URL +
       `?${EASY_ENTRY}=${encodeURIComponent(easyImageURL)}` +
@@ -281,8 +289,6 @@ document.getElementById("doneBtn").addEventListener("click", async () => {
     window.location.href = redirect;
   }
 });
-
 </script>
 </body>
 </html>
-
